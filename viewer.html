@@ -18,8 +18,6 @@ body{
   display:flex;flex-direction:column;overflow:hidden;touch-action:none;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
-
-/* ── Topbar ── */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
 .logo{font-family:'Inter',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.5px;}
 .logo span{color:var(--accent);}
@@ -31,41 +29,32 @@ body{
 .status-dot.warning{background:var(--accent2);box-shadow:0 0 8px var(--accent2);}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
 @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:0.4;}40%{transform:translateY(-8px);opacity:1;}}
-
-/* ── Main ── */
 .main{flex:1;position:relative;overflow:hidden;}
+/* FIX: removed muted from video tag - it prevented stream from showing on some browsers */
 #remoteVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;}
 #drawCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:5;display:none;touch-action:none;}
 .idle-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;}
 .idle-icon{width:80px;height:80px;border:2px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--muted);}
-.idle-state h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;}
+.idle-state h2{font-size:20px;font-weight:700;}
 .idle-state p{font-size:12px;color:var(--muted);line-height:1.6;max-width:280px;}
 .waiting-anim{display:flex;gap:6px;}
 .waiting-anim span{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:bounce 1.2s infinite;}
 .waiting-anim span:nth-child(2){animation-delay:.2s;}
 .waiting-anim span:nth-child(3){animation-delay:.4s;}
 .drawing-badge{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,207,255,0.15);border:1px solid var(--accent);color:var(--accent);font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:6px;text-transform:uppercase;z-index:10;display:none;backdrop-filter:blur(8px);}
-.fps-badge{position:absolute;top:12px;right:16px;background:rgba(0,0,0,0.65);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;z-index:30;pointer-events:none;}
+.fps-badge{position:absolute;top:12px;right:16px;background:rgba(0,0,0,0.65);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;z-index:30;pointer-events:none;}
 audio#remoteAudio{display:none;}
-
-/* ── Visualizer ── */
 .viz-strip{position:absolute;bottom:92px;left:50%;transform:translateX(-50%);width:260px;height:44px;background:rgba(10,10,15,0.75);border:1px solid var(--border);border-radius:10px;overflow:hidden;z-index:50;backdrop-filter:blur(8px);display:none;}
 #audioVisualizer{width:100%;height:100%;display:block;}
-
-/* ── Color Popup ── */
 .color-popup{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);background:rgba(17,17,24,0.95);border:1px solid var(--border);border-radius:14px;padding:12px 14px;z-index:200;display:none;gap:8px;flex-wrap:wrap;width:180px;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
 .color-popup.open{display:flex;}
 .color-swatch{width:30px;height:30px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;}
 .color-swatch:hover,.color-swatch.active{border-color:#fff;transform:scale(1.1);}
-
-/* ── Size Popup ── */
 .size-popup{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);background:rgba(17,17,24,0.95);border:1px solid var(--border);border-radius:14px;padding:12px 16px;z-index:200;display:none;align-items:center;gap:10px;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
 .size-popup.open{display:flex;}
 .sz-btn{border:1px solid var(--border);background:transparent;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
 .sz-btn:hover,.sz-btn.active{border-color:var(--accent);}
 .sz-dot{background:var(--text);border-radius:50%;}
-
-/* ── Zoom Toolbar ── */
 .toolbar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:rgba(17,17,24,0.88);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:8px 10px;z-index:100;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
 .tb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 12px;border-radius:10px;border:none;background:transparent;color:var(--text);cursor:pointer;transition:all .18s;min-width:54px;font-family:'Inter',sans-serif;}
 .tb-btn:hover{background:rgba(255,255,255,0.07);}
@@ -76,15 +65,11 @@ audio#remoteAudio{display:none;}
 .tb-label{font-size:9px;font-weight:700;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;}
 .tb-sep{width:1px;height:36px;background:var(--border);margin:0 2px;}
 .cur-color-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);display:inline-block;vertical-align:middle;margin-bottom:2px;}
-
-/* ── Connection Diagnostics ── */
 .conn-debug{position:absolute;bottom:0;left:0;right:0;height:24px;background:rgba(0,0,0,0.85);display:flex;align-items:center;padding:0 12px;gap:12px;z-index:999;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;}
 .diag-item{display:flex;align-items:center;gap:4px;}
 .diag-val{color:var(--text);font-weight:700;}
 .diag-val.ok{color:var(--accent);}
 .diag-val.warn{color:var(--accent2);}
-
-/* ── Recovery Overlay ── */
 .tap-to-start{position:absolute;inset:0;background:rgba(10,10,15,0.9);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:1000;cursor:pointer;}
 .tap-to-start.visible{display:flex;}
 .tap-btn{background:var(--accent);color:#000;padding:12px 24px;border-radius:12px;font-weight:800;font-size:14px;display:flex;align-items:center;gap:10px;animation:pulse-light 1.5s infinite;}
@@ -94,7 +79,6 @@ audio#remoteAudio{display:none;}
 </head>
 <body>
 
-<!-- Topbar -->
 <div class="topbar">
   <div class="logo">Trade<span>Sync</span></div>
   <div class="role-badge">VIEWER</div>
@@ -105,7 +89,6 @@ audio#remoteAudio{display:none;}
   </div>
 </div>
 
-<!-- Main -->
 <div class="main" id="mainArea">
   <div class="idle-state" id="idleState">
     <div class="idle-icon">📡</div>
@@ -113,18 +96,18 @@ audio#remoteAudio{display:none;}
     <p>Waiting for host to start sharing screen...</p>
     <div class="waiting-anim"><span></span><span></span><span></span></div>
   </div>
-  <video id="remoteVideo" autoplay playsinline muted></video>
+
+  <!-- FIX: No muted attribute — muted blocks video rendering on many browsers -->
+  <video id="remoteVideo" autoplay playsinline></video>
   <audio id="remoteAudio" autoplay></audio>
   <canvas id="drawCanvas"></canvas>
   <div class="drawing-badge" id="drawingBadge">✏ Drawing...</div>
   <div class="fps-badge" id="fpsBadge">-- FPS</div>
 
-  <!-- Visualizer -->
   <div class="viz-strip" id="vizStrip">
     <canvas id="audioVisualizer"></canvas>
   </div>
 
-  <!-- Color Popup -->
   <div class="color-popup" id="colorPopup">
     <div class="color-swatch active" style="background:#00cfff" data-color="#00cfff" onclick="setColor(this)"></div>
     <div class="color-swatch" style="background:#ff3366" data-color="#ff3366" onclick="setColor(this)"></div>
@@ -136,7 +119,6 @@ audio#remoteAudio{display:none;}
     <div class="color-swatch" style="background:#aaaaaa" data-color="#aaaaaa" onclick="setColor(this)"></div>
   </div>
 
-  <!-- Size Popup -->
   <div class="size-popup" id="sizePopup">
     <button class="sz-btn" style="width:28px;height:28px" onclick="setSize(2,this)"><div class="sz-dot" style="width:4px;height:4px"></div></button>
     <button class="sz-btn active" style="width:32px;height:32px" onclick="setSize(4,this)"><div class="sz-dot" style="width:8px;height:8px"></div></button>
@@ -144,7 +126,6 @@ audio#remoteAudio{display:none;}
     <button class="sz-btn" style="width:40px;height:40px" onclick="setSize(14,this)"><div class="sz-dot" style="width:20px;height:20px"></div></button>
   </div>
 
-  <!-- Zoom Toolbar -->
   <div class="toolbar">
     <button class="tb-btn active" id="toolPenBtn" onclick="setTool('pen')">
       <span class="tb-icon">✏️</span>
@@ -180,14 +161,12 @@ audio#remoteAudio{display:none;}
     </button>
   </div>
 
-  <!-- Connection Diagnostics -->
   <div class="conn-debug">
     <div class="diag-item">Signaling: <span class="diag-val" id="diagSignaling">Offline</span></div>
     <div class="diag-item">Peer: <span class="diag-val" id="diagPeer">New</span></div>
     <div class="diag-item">ICE: <span class="diag-val" id="diagIce">New</span></div>
   </div>
 
-  <!-- Recovery UI -->
   <div class="tap-to-start" id="tapToStart" onclick="manualPlay()">
     <div class="tap-btn"><span>▶</span> CLICK TO VIEW STREAM</div>
     <div class="tap-info">Browser blocked autoplay. Tap to reveal the live screen.</div>
@@ -199,8 +178,6 @@ audio#remoteAudio{display:none;}
 // ─── Auth Guard ───────────────────────────────────────
 const _session = JSON.parse(localStorage.getItem('ts_session') || 'null');
 if (!_session) window.location.href = '/';
-const _viewerName = _session ? _session.name : 'Viewer';
-document.querySelector('.logo').innerHTML = `Trade<span>Sync</span>`;
 </script>
 <script>
 
@@ -228,99 +205,70 @@ const ICE_CONFIG = {
   iceCandidatePoolSize: 2
 };
 
-const socket=io({transports:['websocket']});
+const socket = io({transports:['websocket']});
 socket.on('connect', () => {
   const el = document.getElementById('diagSignaling');
   el.textContent = 'Live';
   el.className = 'diag-val ok';
-  console.log('[SOCKET] Connected to signaling server');
 });
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomId = urlParams.get('room');
+if (!roomId) alert('Error: Room ID is missing. Please use a valid invite link.');
 
-if (!roomId) {
-  alert('Error: Room ID is missing. Please use a valid invite link.');
-  // Optionally redirect or show UI error
-}
-
-const video=document.getElementById('remoteVideo');
-const canvas=document.getElementById('drawCanvas');
-const ctx=canvas.getContext('2d');
-const idleState=document.getElementById('idleState');
-const drawingBadge=document.getElementById('drawingBadge');
+const video = document.getElementById('remoteVideo');
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+const idleState = document.getElementById('idleState');
+const drawingBadge = document.getElementById('drawingBadge');
 
 let pc=null, drawing=false, lastX=0, lastY=0;
 let currentColor='#00cfff', currentSize=4, currentTool='pen';
 let drawBadgeTimeout=null, watchdogInterval=null;
-let isAttaching = false; // Prevents race conditions during track setup
 let localAudioStream=null, isVoiceJoined=false;
 let audioCtx=null, analyser=null;
 let lastEmitTime=0, lastEmittedX=0, lastEmittedY=0;
 const EMIT_INTERVAL=16;
-let meetingStartTime = null, meetingInterval = null;
+let meetingStartTime=null, meetingInterval=null;
 
 // ─── Status ───────────────────────────────────────────
 function setStatus(s){
-  if(pc && pc.connectionState === 'connected' && s === 'waiting') return; // Don't downgrade status if live
   const dot=document.getElementById('statusDot'), txt=document.getElementById('statusText');
-  console.log('[DEBUG] UI Status Change:', s);
   if(s==='live'){ dot.className='status-dot live'; txt.textContent='Live'; }
   else if(s==='waiting'){ dot.className='status-dot warning'; txt.textContent='Waiting for host'; }
   else{ dot.className='status-dot'; txt.textContent='Offline'; }
 }
 
 // ─── Socket ───────────────────────────────────────────
-socket.on('connect',()=>{ 
-  if (roomId) {
-    socket.emit('register-viewer', roomId); 
-  }
-  setStatus('waiting'); 
+socket.on('connect', () => { 
+  if (roomId) socket.emit('register-viewer', roomId);
+  setStatus('waiting');
 });
-socket.on('host-online',()=>{ /* host is online */ });
-socket.on('host-offline',()=>{
-  console.log('[DEBUG] Event: host-offline received. Entering grace period...');
-  // Wait 4 seconds to see if host comes back before killing connection
+socket.on('host-online', () => {});
+socket.on('host-offline', () => {
   setTimeout(() => {
-    if (pc && pc.connectionState !== 'connected') {
-       resetViewerState('Host offline timeout');
-    }
+    if (pc && pc.connectionState !== 'connected') resetViewerState('Host offline');
   }, 4000);
 });
-socket.on('stop-sharing',()=>{
-  resetViewerState('Host stopped sharing');
-});
-socket.on('session-start', (timestamp)=>{
-  // Only start/reset if there's a significant drift or it's not running
+socket.on('stop-sharing', () => resetViewerState('Host stopped sharing'));
+socket.on('session-start', (timestamp) => {
   if (!meetingStartTime || Math.abs(meetingStartTime - timestamp) > 2000) {
     meetingStartTime = timestamp;
     startMeetingTimer();
   }
 });
 
-function resetViewerState(reason='Meeting terminated'){
-  console.log('[DEBUG] Action: resetViewerState called. Reason:', reason);
-  isAttaching = false; // Reset the lock
-  // Only reset if we aren't in the middle of a connecting handshake
-  if (pc && (pc.connectionState === 'connecting' || pc.connectionState === 'connected') && reason === 'Meeting terminated') {
-     console.log('[DEBUG] Protection: Skipping reset because connection is active/pending');
-     return;
-  }
-
+function resetViewerState(reason=''){
   setStatus('waiting');
-  if (!video.paused) video.pause();
+  video.pause();
   video.srcObject = null;
-  video.style.display='none'; 
-  canvas.style.display='none'; 
+  video.style.display='none';
+  canvas.style.display='none';
   idleState.style.display='flex';
   document.getElementById('tapToStart').classList.remove('visible');
-  
-  if(pc){ 
-    console.log('[DEBUG] Action: Closing PeerConnection');
-    pc.close(); pc=null; 
-    document.getElementById('diagPeer').textContent = 'Closed';
-    document.getElementById('diagIce').textContent = 'Closed';
-  }
+  if(pc){ pc.close(); pc=null; }
+  document.getElementById('diagPeer').textContent = 'Closed';
+  document.getElementById('diagIce').textContent = 'Closed';
   clearInterval(meetingInterval);
   clearInterval(watchdogInterval);
   meetingStartTime = null;
@@ -330,168 +278,113 @@ function resetViewerState(reason='Meeting terminated'){
 function startMeetingTimer(){
   clearInterval(meetingInterval);
   meetingInterval = setInterval(()=>{
-    const elapsed = Date.now() - meetingStartTime;
+    const elapsed = Math.max(0, Date.now() - meetingStartTime);
     document.getElementById('meetingTimer').textContent = formatDuration(elapsed);
   }, 1000);
 }
-
 function formatDuration(ms){
-  if (ms < 0) ms = 0;
-  const s = Math.floor(ms/1000);
-  const h = Math.floor(s/3600);
-  const m = Math.floor((s%3600)/60);
-  const sec = s%60;
+  const s=Math.floor(ms/1000), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
   return [h,m,sec].map(v=>v.toString().padStart(2,'0')).join(':');
 }
 
+// ─── WebRTC ───────────────────────────────────────────
 function createPeerConnection(){
   if(pc) return;
-  pc=new RTCPeerConnection(ICE_CONFIG);
-  pc.ontrack=(e)=>{
-    console.log('[DEBUG] Event: pc.ontrack fired', e.track.kind);
-    if(e.track.kind==='video'){
-      if (isAttaching && video.srcObject) {
-         console.log('[DEBUG] Skipping redundant video attachment');
-         return;
-      }
-      isAttaching = true;
-      console.log('[DEBUG] Action: Attaching video stream with MediaStream re-bundling');
-      
-      const newStream = new MediaStream([e.track]);
-      video.srcObject = newStream;
-      video.style.display='block'; canvas.style.display='block'; idleState.style.display='none';
-      resizeCanvas(); setStatus('live');
-      
+  pc = new RTCPeerConnection(ICE_CONFIG);
+
+  pc.ontrack = (e) => {
+    console.log('[TRACK]', e.track.kind);
+    if(e.track.kind === 'video'){
+      // FIX: Use MediaStream from event streams array directly (more reliable)
+      const stream = e.streams[0] || new MediaStream([e.track]);
+      video.srcObject = stream;
+      video.style.display='block';
+      canvas.style.display='block';
+      idleState.style.display='none';
+      resizeCanvas();
+      setStatus('live');
+
       const attemptPlay = () => {
-        if (!video.srcObject) return;
         video.play().then(() => {
-          console.log('[DEBUG] Success: Video playing');
           document.getElementById('tapToStart').classList.remove('visible');
-        }).catch(err => {
-          if (err.name === 'AbortError') {
-             console.log('[DEBUG] Play aborted by browser - this is normal, will retry.');
-          } else {
-             console.warn('[DEBUG] Autoplay blocked, showing Tap overlay');
-             document.getElementById('tapToStart').classList.add('visible');
-          }
+        }).catch(() => {
+          document.getElementById('tapToStart').classList.add('visible');
         });
       };
-      
       attemptPlay();
-      
+
       clearInterval(watchdogInterval);
       watchdogInterval = setInterval(() => {
-        if (!pc || pc.connectionState === 'closed') { clearInterval(watchdogInterval); return; }
         if (video.srcObject && (video.paused || video.currentTime === 0)) {
-           console.log('[WATCHDOG] Video appears stuck (Time: 0), attempting nudge...');
-           attemptPlay();
-           if (video.currentTime === 0) {
-             document.getElementById('tapToStart').classList.add('visible');
-           }
-        } else if (video.currentTime > 0) {
-           document.getElementById('tapToStart').classList.remove('visible');
+          attemptPlay();
+        } else {
+          document.getElementById('tapToStart').classList.remove('visible');
         }
-      }, 5000); // 5s watchdog is safer for high latency
+      }, 3000);
 
-    } else if(e.track.kind==='audio'){
-      console.log('[DEBUG] Action: Attaching audio stream');
-      document.getElementById('remoteAudio').srcObject=e.streams[0];
+    } else if(e.track.kind === 'audio'){
+      document.getElementById('remoteAudio').srcObject = e.streams[0];
       setupVisualizer(e.streams[0], true);
     }
   };
-  pc.onicegatheringstatechange=()=>{
-    console.log('[WEBRTC] ICE Gathering State:', pc.iceGatheringState);
+
+  pc.onicecandidate = (e) => {
+    if(e.candidate) socket.emit('ice-candidate', e.candidate);
   };
-  pc.onicecandidate=(e)=>{
-    if(e.candidate) {
-      console.log('[ICE] Generated local candidate');
-      socket.emit('ice-candidate',e.candidate); 
-    }
-  };
-  pc.onconnectionstatechange=()=>{
+  pc.onconnectionstatechange = () => {
     const s = pc.connectionState;
-    console.log('[WEBRTC] Connection State Change:', s);
     const el = document.getElementById('diagPeer');
     el.textContent = s;
-    el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
+    el.className = 'diag-val ' + (s==='connected'?'ok':(s==='failed'?'warn':''));
   };
-  pc.oniceconnectionstatechange=()=>{
+  pc.oniceconnectionstatechange = () => {
     const s = pc.iceConnectionState;
-    console.log('[WEBRTC] ICE Connection State Change:', s);
     const el = document.getElementById('diagIce');
     el.textContent = s;
-    el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
+    el.className = 'diag-val ' + (s==='connected'||s==='completed'?'ok':(s==='failed'?'warn':''));
   };
-  if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
+
+  if(localAudioStream) localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
 }
 
-socket.on('offer',async(offer)=>{
-  console.log('[DEBUG] Event: offer received from host');
+socket.on('offer', async (offer) => {
   if(!pc) createPeerConnection();
   try {
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    console.log('[DEBUG] Success: Remote description (offer) set');
-    const ans = await pc.createAnswer(); 
-    console.log('[DEBUG] Success: Answer created');
+    const ans = await pc.createAnswer();
     await pc.setLocalDescription(ans);
-    console.log('[DEBUG] Success: Local description (answer) set');
-    socket.emit('answer',ans);
-    console.log('[DEBUG] Success: Answer emitted to signaling server');
-  } catch (e) {
-    console.error('[DEBUG] Error during offer processing:', e);
+    socket.emit('answer', ans);
+  } catch(e) {
+    console.error('[OFFER ERROR]', e);
   }
 });
-socket.on('answer',async(a)=>{ 
-  console.log('[DEBUG] Event: answer received from peer');
-  if(pc) {
-    await pc.setRemoteDescription(new RTCSessionDescription(a)); 
-    console.log('[DEBUG] Success: Remote description (answer) set');
-  }
+socket.on('answer', async (a) => {
+  if(pc) await pc.setRemoteDescription(new RTCSessionDescription(a));
 });
-socket.on('ice-candidate',async(cand)=>{
-  console.log('[ICE] Received remote candidate');
+socket.on('ice-candidate', async (cand) => {
   if(pc) {
-    try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) { console.error('[ICE] Error adding candidate', e); }
+    try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) {}
   }
 });
 
 // ─── Canvas ───────────────────────────────────────────
-function resizeCanvas() { const r = canvas.parentElement.getBoundingClientRect(); canvas.width = r.width; canvas.height = r.height; }
+function resizeCanvas(){ const r=canvas.parentElement.getBoundingClientRect(); canvas.width=r.width; canvas.height=r.height; }
 window.addEventListener('resize', resizeCanvas);
 
-function toggleFs() {
-  const el = document.getElementById('mainArea');
-  const btn = document.getElementById('fsBtn');
-  if (!document.fullscreenElement) {
-    el.requestFullscreen().catch(err => console.log(`Error: ${err.message}`));
-    btn.innerHTML = '<span class="tb-icon">🗗</span><span class="tb-label">Exit</span>';
+function toggleFs(){
+  const el=document.getElementById('mainArea'), btn=document.getElementById('fsBtn');
+  if(!document.fullscreenElement){
+    el.requestFullscreen();
+    btn.innerHTML='<span class="tb-icon">🗗</span><span class="tb-label">Exit</span>';
   } else {
     document.exitFullscreen();
-    btn.innerHTML = '<span class="tb-icon">⛶</span><span class="tb-label">Full</span>';
+    btn.innerHTML='<span class="tb-icon">⛶</span><span class="tb-label">Full</span>';
   }
 }
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement) document.getElementById('fsBtn').innerHTML='<span class="tb-icon">⛶</span><span class="tb-label">Full</span>'; setTimeout(resizeCanvas,100); });
 
-document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement) {
-    document.getElementById('fsBtn').innerHTML = '<span class="tb-icon">⛶</span><span class="tb-label">Full</span>';
-  }
-  setTimeout(resizeCanvas, 100);
-});
-
-function getPos(e){
-  const rect=canvas.getBoundingClientRect();
-  const cx=e.touches?e.touches[0].clientX:e.clientX;
-  const cy=e.touches?e.touches[0].clientY:e.clientY;
-  return{x:(cx-rect.left)/rect.width, y:(cy-rect.top)/rect.height};
-}
-function drawLine(x0,y0,x1,y1,color,size,tool){
-  ctx.beginPath(); ctx.moveTo(x0*canvas.width,y0*canvas.height); ctx.lineTo(x1*canvas.width,y1*canvas.height);
-  ctx.strokeStyle=tool==='eraser'?'rgba(0,0,0,1)':color;
-  ctx.lineWidth=tool==='eraser'?size*4:size;
-  ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.globalCompositeOperation=tool==='eraser'?'destination-out':'source-over';
-  ctx.stroke();
-}
+function getPos(e){ const rect=canvas.getBoundingClientRect(); const cx=e.touches?e.touches[0].clientX:e.clientX; const cy=e.touches?e.touches[0].clientY:e.clientY; return{x:(cx-rect.left)/rect.width,y:(cy-rect.top)/rect.height}; }
+function drawLine(x0,y0,x1,y1,color,size,tool){ ctx.beginPath(); ctx.moveTo(x0*canvas.width,y0*canvas.height); ctx.lineTo(x1*canvas.width,y1*canvas.height); ctx.strokeStyle=tool==='eraser'?'rgba(0,0,0,1)':color; ctx.lineWidth=tool==='eraser'?size*4:size; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.globalCompositeOperation=tool==='eraser'?'destination-out':'source-over'; ctx.stroke(); }
 function processMove(p){
   drawLine(lastX,lastY,p.x,p.y,currentColor,currentSize,currentTool);
   const now=performance.now();
@@ -536,84 +429,41 @@ async function joinVoice(){
   }catch(e){ console.log('Mic denied'); }
 }
 
-function manualPlay() {
-  console.log('[DEBUG] Manual click: Forcing video play');
-  if (video && video.srcObject) {
-    video.play().then(() => {
-      document.getElementById('tapToStart').classList.remove('visible');
-    }).catch(e => console.error('[DEBUG] Manual play failed:', e));
+function manualPlay(){
+  if(video && video.srcObject){
+    video.play().then(()=>document.getElementById('tapToStart').classList.remove('visible')).catch(e=>console.error(e));
   }
 }
 
 // ─── Visualizer ───────────────────────────────────────
-function setupVisualizer(stream, isRemote){
+function setupVisualizer(stream,isRemote){
   document.getElementById('vizStrip').style.display='block';
-  if(!audioCtx){
-    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-    analyser=audioCtx.createAnalyser(); analyser.fftSize=256;
-    drawVisualizer();
-  }
+  if(!audioCtx){ audioCtx=new(window.AudioContext||window.webkitAudioContext)(); analyser=audioCtx.createAnalyser(); analyser.fftSize=256; drawVisualizer(); }
   audioCtx.createMediaStreamSource(stream).connect(analyser);
 }
 function drawVisualizer(){
-  const vCanvas=document.getElementById('audioVisualizer');
-  const vCtx=vCanvas.getContext('2d');
-  const bufferLength=analyser.frequencyBinCount;
-  const dataArray=new Uint8Array(bufferLength);
+  const vCanvas=document.getElementById('audioVisualizer'), vCtx=vCanvas.getContext('2d');
+  const bufferLength=analyser.frequencyBinCount, dataArray=new Uint8Array(bufferLength);
   (function draw(){
-    requestAnimationFrame(draw);
-    analyser.getByteTimeDomainData(dataArray);
-    vCtx.fillStyle='rgba(10,10,15,0.4)';
-    vCtx.fillRect(0,0,vCanvas.width,vCanvas.height);
+    requestAnimationFrame(draw); analyser.getByteTimeDomainData(dataArray);
+    vCtx.fillStyle='rgba(10,10,15,0.4)'; vCtx.fillRect(0,0,vCanvas.width,vCanvas.height);
     vCtx.lineWidth=2; vCtx.strokeStyle='#00cfff'; vCtx.beginPath();
     const sw=vCanvas.width/bufferLength; let x=0;
-    for(let i=0;i<bufferLength;i++){
-      const v=dataArray[i]/128.0, y=v*vCanvas.height/2;
-      i===0?vCtx.moveTo(x,y):vCtx.lineTo(x,y); x+=sw;
-    }
+    for(let i=0;i<bufferLength;i++){ const v=dataArray[i]/128.0,y=v*vCanvas.height/2; i===0?vCtx.moveTo(x,y):vCtx.lineTo(x,y); x+=sw; }
     vCtx.lineTo(vCanvas.width,vCanvas.height/2); vCtx.stroke();
   })();
 }
 
 // ─── Tools ────────────────────────────────────────────
-function setTool(tool){
-  currentTool=tool;
-  document.getElementById('toolPenBtn').classList.toggle('active',tool==='pen');
-  document.getElementById('toolEraserBtn').classList.toggle('active',tool==='eraser');
-  closeAllPopups();
-}
-function setColor(el){
-  currentColor=el.dataset.color;
-  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('curColorDot').style.background=currentColor;
-  if(currentTool==='eraser') setTool('pen');
-  closeAllPopups();
-}
-function setSize(size,btn){
-  currentSize=size;
-  document.querySelectorAll('.sz-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  closeAllPopups();
-}
+function setTool(tool){ currentTool=tool; document.getElementById('toolPenBtn').classList.toggle('active',tool==='pen'); document.getElementById('toolEraserBtn').classList.toggle('active',tool==='eraser'); closeAllPopups(); }
+function setColor(el){ currentColor=el.dataset.color; document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active')); el.classList.add('active'); document.getElementById('curColorDot').style.background=currentColor; if(currentTool==='eraser') setTool('pen'); closeAllPopups(); }
+function setSize(size,btn){ currentSize=size; document.querySelectorAll('.sz-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); closeAllPopups(); }
 function clearCanvas(){ ctx.clearRect(0,0,canvas.width,canvas.height); socket.emit('clear-canvas'); }
-function togglePopup(showId, hideId){
-  const el=document.getElementById(showId);
-  const hide=document.getElementById(hideId);
-  hide.classList.remove('open');
-  el.classList.toggle('open');
-}
-function closeAllPopups(){
-  document.getElementById('colorPopup').classList.remove('open');
-  document.getElementById('sizePopup').classList.remove('open');
-}
+function togglePopup(showId,hideId){ document.getElementById(hideId).classList.remove('open'); document.getElementById(showId).classList.toggle('open'); }
+function closeAllPopups(){ document.getElementById('colorPopup').classList.remove('open'); document.getElementById('sizePopup').classList.remove('open'); }
 document.addEventListener('click',(e)=>{
-  if(!e.target.closest('.toolbar') && !e.target.closest('.color-popup') && !e.target.closest('.size-popup')) closeAllPopups();
-  // Force play on click to bypass browser autoplay policies
-  if(video && video.srcObject && video.paused) {
-    console.log('[DEBUG] User clicked - forcing video play');
-    video.play().catch(e=>console.error('[DEBUG] Failed to force play on click', e));
-  }
+  if(!e.target.closest('.toolbar')&&!e.target.closest('.color-popup')&&!e.target.closest('.size-popup')) closeAllPopups();
+  if(video&&video.srcObject&&video.paused) video.play().catch(()=>{});
 });
 </script>
 </body>
