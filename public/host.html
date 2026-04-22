@@ -184,7 +184,7 @@ const ICE_CONFIG = {
     { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
   ],
-  iceCandidatePoolSize: 0
+  iceCandidatePoolSize: 2
 };
 
 const socket = io({transports:['websocket']});
@@ -339,11 +339,6 @@ function stopSharing(){
 function createPeerConnection(){
   if(pc) pc.close();
   pc = new RTCPeerConnection(ICE_CONFIG);
-  
-  // Force transceivers to sendonly for better negotiation
-  pc.addTransceiver('video', { direction: 'sendonly' });
-  if (isMicOn) pc.addTransceiver('audio', { direction: 'sendonly' });
-
   if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
   if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
   pc.onicecandidate=({candidate})=>{
@@ -359,6 +354,9 @@ function createPeerConnection(){
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
     log('WebRTC Connection: '+s,'info');
+  };
+  pc.onicegatheringstatechange=()=>{
+    console.log('[WEBRTC] ICE Gathering State:', pc.iceGatheringState);
   };
   pc.oniceconnectionstatechange=()=>{
     const s = pc.iceConnectionState;
