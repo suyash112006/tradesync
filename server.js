@@ -123,12 +123,13 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (currentRoomId && rooms.has(currentRoomId)) {
       const room = rooms.get(currentRoomId);
-      if (currentRole === 'host') {
+      if (currentRole === 'host' && room.hostId === socket.id) {
         if (room.viewerId) io.to(room.viewerId).emit('host-offline');
-        rooms.delete(currentRoomId); // Close room if host leaves
-      } else if (currentRole === 'viewer') {
+        rooms.delete(currentRoomId); 
+        console.log(`[ROOM] Closed room ${currentRoomId} because host left.`);
+      } else if (currentRole === 'viewer' && room.viewerId === socket.id) {
         room.viewerId = null;
-        if (room.hostId) io.to(room.hostId).emit('peer-disconnected');
+        if (room.hostId) io.to(room.hostId).emit('viewer-disconnected');
       }
     }
     console.log('Disconnected:', socket.id);

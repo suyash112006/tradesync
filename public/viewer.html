@@ -278,7 +278,13 @@ socket.on('connect',()=>{
 });
 socket.on('host-online',()=>{ /* host is online */ });
 socket.on('host-offline',()=>{
-  resetViewerState('Host went offline');
+  console.log('[DEBUG] Event: host-offline received. Entering grace period...');
+  // Wait 4 seconds to see if host comes back before killing connection
+  setTimeout(() => {
+    if (pc && pc.connectionState !== 'connected') {
+       resetViewerState('Host offline timeout');
+    }
+  }, 4000);
 });
 socket.on('stop-sharing',()=>{
   resetViewerState('Host stopped sharing');
