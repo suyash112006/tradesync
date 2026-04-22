@@ -74,6 +74,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId);
     if (!room) return;
     const target = socket.id === room.hostId ? room.viewerId : room.hostId;
+    console.log(`[HANDSHAKE] Offer from ${currentRole} in room ${currentRoomId} -> Target: ${target ? 'Found' : 'Missing'}`);
     if (target) io.to(target).emit('offer', data);
   });
 
@@ -81,6 +82,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId);
     if (!room) return;
     const target = socket.id === room.hostId ? room.viewerId : room.hostId;
+    console.log(`[HANDSHAKE] Answer from ${currentRole} in room ${currentRoomId} -> Target: ${target ? 'Found' : 'Missing'}`);
     if (target) io.to(target).emit('answer', data);
   });
 

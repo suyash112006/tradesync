@@ -13,7 +13,11 @@
   --accent:#00cfff; --accent2:#ff6b35; --text:#e8e8f0;
   --muted:#555570; --danger:#ff3366;
 }
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;touch-action:none;}
+body{
+  background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;
+  display:flex;flex-direction:column;overflow:hidden;touch-action:none;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
 
 /* ── Topbar ── */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
@@ -214,7 +218,9 @@ const ICE_CONFIG = {
 const socket=io({transports:['websocket']});
 socket.on('connect', () => {
   const el = document.getElementById('diagSignaling');
-  el.textContent = 'Live'; el.className = 'diag-val ok';
+  el.textContent = 'Live';
+  el.className = 'diag-val ok';
+  console.log('[SOCKET] Connected to signaling server');
 });
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -315,20 +321,26 @@ function createPeerConnection(){
       setupVisualizer(e.streams[0], true);
     }
   };
-  pc.onicecandidate=(e)=>{ if(e.candidate) socket.emit('ice-candidate',e.candidate); };
+  pc.onicecandidate=(e)=>{
+    if(e.candidate) {
+      console.log('[ICE] Generated local candidate');
+      socket.emit('ice-candidate',e.candidate); 
+    }
+  };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
+    console.log('[WEBRTC] Connection State:', s);
     const el = document.getElementById('diagPeer');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
   };
   pc.oniceconnectionstatechange=()=>{
     const s = pc.iceConnectionState;
+    console.log('[WEBRTC] ICE Connection State:', s);
     const el = document.getElementById('diagIce');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
   };
-  pc.onconnectionstatechange=()=>{};
   if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
 }
 
@@ -339,10 +351,11 @@ socket.on('offer',async(offer)=>{
   socket.emit('answer',ans);
 });
 socket.on('answer',async(a)=>{ if(pc) await pc.setRemoteDescription(new RTCSessionDescription(a)); });
-socket.on('ice-candidate',async(c)=>{ 
-  if(pc){ 
-    try{ await pc.addIceCandidate(new RTCIceCandidate(c)); }catch(e){} 
-  } 
+socket.on('ice-candidate',async(cand)=>{
+  console.log('[ICE] Received remote candidate');
+  if(pc) {
+    try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) { console.error('[ICE] Error adding candidate', e); }
+  }
 });
 
 // ─── Canvas ───────────────────────────────────────────

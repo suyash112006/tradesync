@@ -13,7 +13,11 @@
   --accent:#00e5a0; --accent-glow:rgba(0,229,160,0.3);
   --text:#f0f2f5; --muted:#717c8d; --warn:#ff4d6d;
 }
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+body{
+  background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;
+  overflow:hidden;display:flex;flex-direction:column;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
 
 /* ── Topbar ── */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
@@ -187,6 +191,7 @@ const socket = io({transports:['websocket']});
 socket.on('connect', () => {
   document.getElementById('diagSignaling').className = 'diag-val ok';
   document.getElementById('diagSignaling').textContent = 'Live';
+  console.log('[SOCKET] Connected to signaling server');
 });
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -217,8 +222,9 @@ socket.on('viewer-joined', ()=>{
   if(localStream){ 
     log('Stabilizing signaling connection... (800ms)','info');
     setTimeout(() => {
-      log('Initiating fast stream sync...', 'info');
-      initiateOffer({ iceRestart: true }); 
+      log('Initiating stream sync...', 'info');
+      // Standard offer for initial connection is more stable
+      initiateOffer(); 
     }, 800);
   }
 });
@@ -230,7 +236,12 @@ socket.on('offer', async(offer)=>{
   const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
   socket.emit('answer', ans);
 });
-socket.on('ice-candidate', async(c)=>{ if(pc){ try{await pc.addIceCandidate(new RTCIceCandidate(c));}catch(e){} } });
+socket.on('ice-candidate',async(c)=>{ 
+  console.log('[ICE] Received remote candidate');
+  if(pc){ 
+    try{ await pc.addIceCandidate(new RTCIceCandidate(c)); }catch(e){ console.error('[ICE] Error adding candidate', e); } 
+  } 
+});
 
 // ─── Drawing ──────────────────────────────────────────
 socket.on('draw-event', (data)=>{
@@ -319,9 +330,15 @@ function createPeerConnection(){
   pc = new RTCPeerConnection(ICE_CONFIG);
   if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
   if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
-  pc.onicecandidate=({candidate})=>{ if(candidate) socket.emit('ice-candidate',candidate); };
+  pc.onicecandidate=({candidate})=>{
+    if(candidate) {
+      console.log('[ICE] Generated local candidate');
+      socket.emit('ice-candidate',candidate); 
+    }
+  };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
+    console.log('[WEBRTC] Connection State:', s);
     const el = document.getElementById('diagPeer');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
@@ -329,6 +346,7 @@ function createPeerConnection(){
   };
   pc.oniceconnectionstatechange=()=>{
     const s = pc.iceConnectionState;
+    console.log('[WEBRTC] ICE Connection State:', s);
     const el = document.getElementById('diagIce');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
