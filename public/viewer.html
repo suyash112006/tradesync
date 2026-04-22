@@ -249,6 +249,7 @@ let meetingStartTime = null, meetingInterval = null;
 // ─── Status ───────────────────────────────────────────
 function setStatus(s){
   const dot=document.getElementById('statusDot'), txt=document.getElementById('statusText');
+  console.log('[DEBUG] UI Status Change:', s);
   if(s==='live'){ dot.className='status-dot live'; txt.textContent='Live'; }
   else if(s==='waiting'){ dot.className='status-dot warning'; txt.textContent='Waiting for host'; }
   else{ dot.className='status-dot'; txt.textContent='Offline'; }
@@ -329,14 +330,14 @@ function createPeerConnection(){
   };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
-    console.log('[WEBRTC] Connection State:', s);
+    console.log('[WEBRTC] Connection State Change:', s);
     const el = document.getElementById('diagPeer');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
   };
   pc.oniceconnectionstatechange=()=>{
     const s = pc.iceConnectionState;
-    console.log('[WEBRTC] ICE Connection State:', s);
+    console.log('[WEBRTC] ICE Connection State Change:', s);
     const el = document.getElementById('diagIce');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
@@ -345,12 +346,28 @@ function createPeerConnection(){
 }
 
 socket.on('offer',async(offer)=>{
-  createPeerConnection();
-  await pc.setRemoteDescription(new RTCSessionDescription(offer));
-  const ans=await pc.createAnswer(); await pc.setLocalDescription(ans);
-  socket.emit('answer',ans);
+  console.log('[DEBUG] Event: offer received from host');
+  if(!pc) createPeerConnection();
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    console.log('[DEBUG] Success: Remote description (offer) set');
+    const ans = await pc.createAnswer(); 
+    console.log('[DEBUG] Success: Answer created');
+    await pc.setLocalDescription(ans);
+    console.log('[DEBUG] Success: Local description (answer) set');
+    socket.emit('answer',ans);
+    console.log('[DEBUG] Success: Answer emitted to signaling server');
+  } catch (e) {
+    console.error('[DEBUG] Error during offer processing:', e);
+  }
 });
-socket.on('answer',async(a)=>{ if(pc) await pc.setRemoteDescription(new RTCSessionDescription(a)); });
+socket.on('answer',async(a)=>{ 
+  console.log('[DEBUG] Event: answer received from peer');
+  if(pc) {
+    await pc.setRemoteDescription(new RTCSessionDescription(a)); 
+    console.log('[DEBUG] Success: Remote description (answer) set');
+  }
+});
 socket.on('ice-candidate',async(cand)=>{
   console.log('[ICE] Received remote candidate');
   if(pc) {

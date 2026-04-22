@@ -218,14 +218,15 @@ socket.on('connect', ()=>{
   socket.emit('register-host', roomId); 
 });
 socket.on('viewer-joined', ()=>{
-  setConn(true); log('Viewer connected!','ok');
+  setConn(true); log('Viewer joined room! Starting handshake...','ok');
+  console.log('[DEBUG] Event: viewer-joined received from server');
   if(localStream){ 
-    log('Stabilizing signaling connection... (800ms)','info');
     setTimeout(() => {
-      log('Initiating stream sync...', 'info');
-      // Standard offer for initial connection is more stable
+      console.log('[DEBUG] Action: Triggering initial offer');
       initiateOffer(); 
-    }, 800);
+    }, 500);
+  } else {
+    console.warn('[DEBUG] Warning: Viewer joined but localStream is null!');
   }
 });
 socket.on('peer-disconnected', ()=>{ setConn(false); log('Viewer disconnected','err'); });
@@ -274,6 +275,9 @@ async function startSharing(){
     document.getElementById('stopBtn').style.display='flex';
     log('Screen sharing started','ok');
     localStream.getVideoTracks()[0].onended=()=>stopSharing();
+    
+    // Proactively prepare WebRTC
+    createPeerConnection();
     
     // Start timer & heartbeat
     meetingStartTime = Date.now();
@@ -338,15 +342,15 @@ function createPeerConnection(){
   };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
-    console.log('[WEBRTC] Connection State:', s);
+    console.log('[WEBRTC] Connection State Change:', s);
     const el = document.getElementById('diagPeer');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
-    log('WebRTC: '+s,'info');
+    log('WebRTC Connection: '+s,'info');
   };
   pc.oniceconnectionstatechange=()=>{
     const s = pc.iceConnectionState;
-    console.log('[WEBRTC] ICE Connection State:', s);
+    console.log('[WEBRTC] ICE Connection State Change:', s);
     const el = document.getElementById('diagIce');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
@@ -361,11 +365,20 @@ function createPeerConnection(){
 }
 
 async function initiateOffer(options = {}){
+  console.log('[DEBUG] Action: initiateOffer() start');
   if(!pc) createPeerConnection();
-  const offer=await pc.createOffer(options); 
-  await pc.setLocalDescription(offer);
-  socket.emit('offer',offer); 
-  log(options.iceRestart ? 'Fast ICE restart sent' : 'Sent offer to viewer','info');
+  try {
+    const offer=await pc.createOffer(options); 
+    console.log('[DEBUG] Success: Offer created');
+    await pc.setLocalDescription(offer);
+    console.log('[DEBUG] Success: Local description set');
+    socket.emit('offer',offer); 
+    console.log('[DEBUG] Success: Offer emitted to signaling server');
+    log(options.iceRestart ? 'Handshake: ICE Restart sent' : 'Handshake: Offer sent to viewer','info');
+  } catch (e) {
+    console.error('[DEBUG] Error during initiateOffer:', e);
+    log('Handshake failed: ' + e.message, 'err');
+  }
 }
 
 // ─── Mic ─────────────────────────────────────────────
@@ -448,12 +461,13 @@ function copyViewerLink(){
   showToast('Viewer link copied!'); 
 }
 function toggleLog(){ document.getElementById('logPopup').classList.toggle('open'); }
-function log(msg,type='info'){
-  const p=document.getElementById('logPopup'), l=document.createElement('div');
-  l.className='log-line '+type;
-  l.textContent='['+new Date().toLocaleTimeString('en',{hour12:false})+'] '+msg;
-  p.prepend(l);
-}
+const log=(m,t='info')=>{
+  const p=document.getElementById('logPopup');
+  const d=new Date().toLocaleTimeString();
+  p.innerHTML+=`<div class="log-line ${t}">[${d}] ${m}</div>`;
+  p.scrollTop=p.scrollHeight;
+  console.log(`[APP-LOG] ${m}`);
+};
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 </script>
 </body>
