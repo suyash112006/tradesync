@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
     currentRole = 'viewer';
     
     if (!rooms.has(roomId)) {
-      rooms.set(roomId, { hostId: null, viewerId: socket.id });
+      rooms.set(roomId, { hostId: null, viewerId: socket.id, startTime: null });
     } else {
       const room = rooms.get(roomId);
       room.viewerId = socket.id;
@@ -104,7 +104,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId);
     if (room) {
       room.startTime = timestamp;
-      socket.to(currentRoomId).emit('session-start', timestamp);
+      if (room.viewerId) io.to(room.viewerId).emit('session-start', timestamp);
     }
   });
 
@@ -112,7 +112,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId);
     if (room) {
       room.startTime = null;
-      socket.to(currentRoomId).emit('stop-sharing');
+      if (room.viewerId) io.to(room.viewerId).emit('stop-sharing');
     }
   });
 

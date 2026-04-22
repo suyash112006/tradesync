@@ -235,11 +235,17 @@ socket.on('session-start', (timestamp)=>{
 
 function resetViewerState(){
   setStatus('waiting');
-  video.style.display='none'; canvas.style.display='none'; idleState.style.display='flex';
+  video.pause();
+  video.srcObject = null;
+  video.style.display='none'; 
+  canvas.style.display='none'; 
+  idleState.style.display='flex';
+  
   if(pc){ pc.close(); pc=null; }
   clearInterval(meetingInterval);
   meetingStartTime = null;
   document.getElementById('meetingTimer').textContent = '00:00:00';
+  console.log('Viewer state reset: Meeting terminated');
 }
 
 function startMeetingTimer(){
