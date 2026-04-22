@@ -166,7 +166,7 @@ if (!roomId) {
 let pc=null, localStream=null, drawFadeTimer=null;
 let localAudioStream=null, isMicOn=false;
 let audioCtx=null, analyser=null;
-let meetingStartTime = null, meetingInterval = null;
+let meetingStartTime = null, meetingInterval = null, meetingSyncInterval = null;
 
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
@@ -228,10 +228,15 @@ async function startSharing(){
     log('Screen sharing started','ok');
     localStream.getVideoTracks()[0].onended=()=>stopSharing();
     
-    // Start timer
+    // Start timer & heartbeat
     meetingStartTime = Date.now();
     socket.emit('session-start', meetingStartTime);
     startMeetingTimer();
+    
+    clearInterval(meetingSyncInterval);
+    meetingSyncInterval = setInterval(() => {
+      if (meetingStartTime) socket.emit('session-start', meetingStartTime);
+    }, 10000); // 10s heartbeat
 
     createPeerConnection(); initiateOffer();
   }catch(e){ log('Share cancelled or denied','err'); }
@@ -262,8 +267,9 @@ function stopSharing(){
   document.getElementById('shareBtn').style.display='flex';
   document.getElementById('stopBtn').style.display='none';
   
-  // Stop timer & sync
+  // Stop timer, sync & heartbeat
   clearInterval(meetingInterval);
+  clearInterval(meetingSyncInterval);
   meetingStartTime = null;
   document.getElementById('meetingTimer').textContent = '00:00:00';
   socket.emit('stop-sharing');

@@ -104,7 +104,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId);
     if (room) {
       room.startTime = timestamp;
-      if (room.viewerId) io.to(room.viewerId).emit('session-start', timestamp);
+      io.to(currentRoomId).emit('session-start', timestamp);
     }
   });
 
@@ -112,7 +112,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId);
     if (room) {
       room.startTime = null;
-      if (room.viewerId) io.to(room.viewerId).emit('stop-sharing');
+      io.to(currentRoomId).emit('stop-sharing');
     }
   });
 
