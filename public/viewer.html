@@ -248,6 +248,7 @@ let meetingStartTime = null, meetingInterval = null;
 
 // ─── Status ───────────────────────────────────────────
 function setStatus(s){
+  if(pc && pc.connectionState === 'connected' && s === 'waiting') return; // Don't downgrade status if live
   const dot=document.getElementById('statusDot'), txt=document.getElementById('statusText');
   console.log('[DEBUG] UI Status Change:', s);
   if(s==='live'){ dot.className='status-dot live'; txt.textContent='Live'; }
@@ -264,10 +265,10 @@ socket.on('connect',()=>{
 });
 socket.on('host-online',()=>{ /* host is online */ });
 socket.on('host-offline',()=>{
-  resetViewerState();
+  resetViewerState('Host went offline');
 });
 socket.on('stop-sharing',()=>{
-  resetViewerState();
+  resetViewerState('Host stopped sharing');
 });
 socket.on('session-start', (timestamp)=>{
   // Only start/reset if there's a significant drift or it's not running
@@ -277,19 +278,30 @@ socket.on('session-start', (timestamp)=>{
   }
 });
 
-function resetViewerState(){
+function resetViewerState(reason='Meeting terminated'){
+  console.log('[DEBUG] Action: resetViewerState called. Reason:', reason);
+  // Only reset if we aren't in the middle of a connecting handshake
+  if (pc && (pc.connectionState === 'connecting' || pc.connectionState === 'connected') && reason === 'Meeting terminated') {
+     console.log('[DEBUG] Protection: Skipping reset because connection is active/pending');
+     return;
+  }
+
   setStatus('waiting');
-  video.pause();
+  if (!video.paused) video.pause();
   video.srcObject = null;
   video.style.display='none'; 
   canvas.style.display='none'; 
   idleState.style.display='flex';
   
-  if(pc){ pc.close(); pc=null; }
+  if(pc){ 
+    console.log('[DEBUG] Action: Closing PeerConnection');
+    pc.close(); pc=null; 
+    document.getElementById('diagPeer').textContent = 'Closed';
+    document.getElementById('diagIce').textContent = 'Closed';
+  }
   clearInterval(meetingInterval);
   meetingStartTime = null;
   document.getElementById('meetingTimer').textContent = '00:00:00';
-  console.log('Viewer state reset: Meeting terminated');
 }
 
 function startMeetingTimer(){
