@@ -4,19 +4,20 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>TradeSync — Host</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0a0c0f; --surface:#13161c; --border:#1e242d;
   --accent:#00e5a0; --accent-glow:rgba(0,229,160,0.3);
   --text:#f0f2f5; --muted:#717c8d; --warn:#ff4d6d;
 }
-body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
 /* ── Topbar ── */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
-.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.5px;}
+.logo{font-family:'Inter',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.5px;}
 .logo span{color:var(--accent);}
 .status-row{display:flex;align-items:center;gap:16px;}
 .timer-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--accent);min-width:90px;justify-content:center;}
@@ -183,7 +184,10 @@ const ICE_CONFIG = {
 };
 
 const socket = io({transports:['websocket']});
-socket.on('connect', () => document.getElementById('diagSignaling').className = 'diag-val ok', document.getElementById('diagSignaling').textContent = 'Live');
+socket.on('connect', () => {
+  document.getElementById('diagSignaling').className = 'diag-val ok';
+  document.getElementById('diagSignaling').textContent = 'Live';
+});
 
 const urlParams = new URLSearchParams(window.location.search);
 let roomId = urlParams.get('room');

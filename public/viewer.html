@@ -4,23 +4,24 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>TradeSync — Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg:#0a0a0f; --surface:#111118; --border:#1e1e2e;
+  --bg:#0a0a0f; --surface:#111118; --border:#1e242d;
   --accent:#00cfff; --accent2:#ff6b35; --text:#e8e8f0;
   --muted:#555570; --danger:#ff3366;
 }
-body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;height:100vh;display:flex;flex-direction:column;overflow:hidden;touch-action:none;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;touch-action:none;}
 
 /* ── Topbar ── */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
-.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.5px;}
+.logo{font-family:'Inter',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.5px;}
 .logo span{color:var(--accent);}
 .role-badge{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border:1px solid var(--accent);color:var(--accent);border-radius:2px;}
 .status-bar{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted);position:relative;}
-.timer-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);min-width:80px;justify-content:center;margin-right:10px;}
+.timer-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);min-width:80px;justify-content:center;margin-right:10px;}
 .status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:all .3s;}
 .status-dot.live{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite;}
 .status-dot.warning{background:var(--accent2);box-shadow:0 0 8px var(--accent2);}
@@ -62,7 +63,7 @@ audio#remoteAudio{display:none;}
 
 /* ── Zoom Toolbar ── */
 .toolbar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:rgba(17,17,24,0.88);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:8px 10px;z-index:100;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
-.tb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 12px;border-radius:10px;border:none;background:transparent;color:var(--text);cursor:pointer;transition:all .18s;min-width:54px;font-family:'Space Mono',monospace;}
+.tb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 12px;border-radius:10px;border:none;background:transparent;color:var(--text);cursor:pointer;transition:all .18s;min-width:54px;font-family:'Inter',sans-serif;}
 .tb-btn:hover{background:rgba(255,255,255,0.07);}
 .tb-btn.active{background:rgba(0,207,255,0.12);}
 .tb-btn.active .tb-icon{color:var(--accent);}
@@ -73,7 +74,7 @@ audio#remoteAudio{display:none;}
 .cur-color-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);display:inline-block;vertical-align:middle;margin-bottom:2px;}
 
 /* ── Connection Diagnostics ── */
-.conn-debug{position:absolute;bottom:0;left:0;right:0;height:24px;background:rgba(0,0,0,0.85);display:flex;align-items:center;padding:0 12px;gap:12px;z-index:999;border-top:1px solid var(--border);font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;}
+.conn-debug{position:absolute;bottom:0;left:0;right:0;height:24px;background:rgba(0,0,0,0.85);display:flex;align-items:center;padding:0 12px;gap:12px;z-index:999;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;}
 .diag-item{display:flex;align-items:center;gap:4px;}
 .diag-val{color:var(--text);font-weight:700;}
 .diag-val.ok{color:var(--accent);}
