@@ -348,8 +348,9 @@ function createPeerConnection(){
   pc.ontrack=(e)=>{
     console.log('[DEBUG] Event: pc.ontrack fired', e.track.kind);
     if(e.track.kind==='video'){
-      console.log('[DEBUG] Action: Attaching video stream');
-      video.srcObject=e.streams[0];
+      console.log('[DEBUG] Action: Attaching video stream with MediaStream re-bundling');
+      // Create a fresh stream from the track for maximum compatibility
+      video.srcObject=new MediaStream([e.track]);
       video.style.display='block'; canvas.style.display='block'; idleState.style.display='none';
       resizeCanvas(); setStatus('live');
       

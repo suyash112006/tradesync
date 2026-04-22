@@ -78,6 +78,12 @@ audio#remoteAudio{display:none;}
 .diag-val{color:var(--text);font-weight:700;}
 .diag-val.ok{color:var(--accent);}
 .diag-val.warn{color:var(--warn);}
+
+/* ── Diagnostic Preview ── */
+.diagnostic-preview{position:absolute;bottom:80px;right:20px;width:180px;height:110px;background:#000;border:2px solid var(--accent);border-radius:8px;z-index:200;display:none;overflow:hidden;box-shadow:0 8px 32px rgba(0,207,255,0.2);}
+.diagnostic-preview.visible{display:block;}
+.diagnostic-preview video{width:100%;height:100%;object-fit:cover;}
+.diagnostic-label{position:absolute;top:4px;left:4px;background:var(--accent);color:#000;font-size:8px;font-weight:800;padding:2px 4px;border-radius:2px;text-transform:uppercase;z-index:10;}
 </style>
 </head>
 <body>
@@ -102,6 +108,13 @@ audio#remoteAudio{display:none;}
   <video id="localVideo" autoplay muted playsinline></video>
   <audio id="remoteAudio" autoplay></audio>
   <canvas id="drawCanvas"></canvas>
+  
+  <!-- Diagnostic Preview -->
+  <div class="diagnostic-preview" id="diagBox">
+    <div class="diagnostic-label">Your Stream</div>
+    <video id="diagVideo" autoplay muted playsinline></video>
+  </div>
+
   <div class="draw-indicator" id="drawIndicator"><div class="dot green"></div>Viewer is drawing...</div>
   <div class="fps-badge" id="fpsBadge">-- FPS</div>
 
@@ -274,6 +287,11 @@ async function startSharing(){
     document.getElementById('shareBtn').style.display='none';
     document.getElementById('stopBtn').style.display='flex';
     log('Screen sharing started','ok');
+    document.getElementById('diagBox').classList.add('visible');
+    document.getElementById('diagVideo').srcObject = localStream;
+    
+    // Ensure tracks are enabled
+    localStream.getTracks().forEach(t => t.enabled = true);
     localStream.getVideoTracks()[0].onended=()=>stopSharing();
     
     // Proactively prepare WebRTC
@@ -321,6 +339,8 @@ function stopSharing(){
   if(pc){ pc.close(); pc=null; }
   const v=document.getElementById('localVideo'); v.style.display='none'; v.srcObject=null;
   document.getElementById('idleScreen').style.display='flex';
+  document.getElementById('diagBox').classList.remove('visible');
+  document.getElementById('diagVideo').srcObject = null;
   setStream(false);
   document.getElementById('shareBtn').style.display='flex';
   document.getElementById('stopBtn').style.display='none';
