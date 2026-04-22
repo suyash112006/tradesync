@@ -164,6 +164,14 @@ audio#remoteAudio{display:none;}
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
+// ─── Auth Guard ───────────────────────────────────────
+const _session = JSON.parse(localStorage.getItem('ts_session') || 'null');
+if (!_session) window.location.href = '/';
+const _viewerName = _session ? _session.name : 'Viewer';
+document.querySelector('.logo').innerHTML = `Trade<span>Sync</span>`;
+</script>
+<script>
+
 // ─── FPS ─────────────────────────────────────────────
 let frameCount=0, lastFpsTime=performance.now();
 (function fpsLoop(){

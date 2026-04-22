@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TradeSync — Lobby</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#08090d;--surface:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);
+  --accent:#00e5a0;--accent-dim:rgba(0,229,160,0.12);--accent-glow:rgba(0,229,160,0.35);
+  --warn:#ff4d6d;--text:#f0f2f5;--muted:#718096;--panel:rgba(14,17,24,0.85);
+}
+body{
+  background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;position:relative;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 70% 50% at 15% 15%,rgba(0,229,160,0.06),transparent 55%),
+             radial-gradient(ellipse 50% 40% at 85% 85%,rgba(99,102,241,0.06),transparent 55%);
+  pointer-events:none;z-index:0;
+}
+
+/* Topbar */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;border-bottom:1px solid var(--border);
+  background:rgba(8,9,13,0.9);backdrop-filter:blur(20px);
+  position:sticky;top:0;z-index:100;flex-shrink:0;
+}
+.logo{font-size:20px;font-weight:800;letter-spacing:-0.5px;}
+.logo span{color:var(--accent);}
+.user-info{display:flex;align-items:center;gap:14px;}
+.avatar{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,rgba(0,229,160,0.2),rgba(0,229,160,0.05));
+  border:1px solid rgba(0,229,160,0.3);display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:800;color:var(--accent);
+}
+.user-name{font-size:14px;font-weight:700;color:var(--text);}
+.user-role{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.logout-btn{
+  padding:7px 16px;border:1px solid var(--border);border-radius:8px;
+  background:transparent;color:var(--muted);font-family:'JetBrains Mono',monospace;
+  font-size:11px;cursor:pointer;transition:all .2s;
+}
+.logout-btn:hover{border-color:var(--warn);color:var(--warn);}
+
+/* Main */
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 24px;position:relative;z-index:1;}
+
+/* Cards */
+.lobby-card{
+  width:100%;max-width:520px;
+  background:var(--panel);backdrop-filter:blur(24px);
+  border:1px solid var(--border);border-radius:24px;
+  box-shadow:0 24px 80px rgba(0,0,0,0.5);overflow:hidden;
+}
+.card-header{
+  padding:32px 36px 24px;border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,rgba(0,229,160,0.05),transparent);
+}
+.card-header-icon{font-size:36px;margin-bottom:12px;}
+.card-header-title{font-size:22px;font-weight:800;margin-bottom:6px;}
+.card-header-sub{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
+.card-body{padding:28px 36px 36px;}
+
+/* Room Code Display */
+.room-code-box{
+  background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.2);
+  border-radius:14px;padding:20px 24px;margin-bottom:20px;text-align:center;
+}
+.room-code-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.room-code{font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:var(--accent);letter-spacing:8px;}
+
+/* Buttons */
+.btn-row{display:flex;gap:10px;margin-bottom:20px;}
+.btn-copy{
+  flex:1;padding:12px 16px;border:1px solid var(--border);border-radius:10px;
+  background:rgba(255,255,255,0.04);color:var(--text);font-family:'JetBrains Mono',monospace;
+  font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-copy:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+.btn-copy.copied{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+.btn-start{
+  width:100%;padding:15px;margin-top:4px;
+  background:linear-gradient(135deg,var(--accent),#00c48c);
+  border:none;border-radius:12px;
+  color:#08090d;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-start:hover{transform:translateY(-2px);box-shadow:0 10px 30px var(--accent-glow);}
+.btn-start:active{transform:translateY(0);}
+
+/* Join inputs */
+.or-divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.join-input{
+  width:100%;padding:13px 16px;margin-bottom:12px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;
+  outline:none;transition:all .2s;
+}
+.join-input:focus{border-color:rgba(0,229,160,0.5);background:rgba(0,229,160,0.04);box-shadow:0 0 0 4px rgba(0,229,160,0.08);}
+.join-input::placeholder{color:rgba(255,255,255,0.2);}
+.code-input{text-align:center;font-size:22px;font-weight:700;letter-spacing:6px;text-transform:uppercase;}
+.btn-join{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,#6366f1,#4f46e5);
+  border:none;border-radius:12px;
+  color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;
+  cursor:pointer;transition:all .2s;margin-top:4px;
+}
+.btn-join:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(99,102,241,0.4);}
+.btn-join:active{transform:translateY(0);}
+.error{
+  background:rgba(255,77,109,0.1);border:1px solid rgba(255,77,109,0.25);
+  color:var(--warn);padding:10px 14px;border-radius:8px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;text-align:center;
+  margin-bottom:14px;display:none;
+}
+.error.show{display:block;}
+
+/* Tip */
+.tip{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-top:16px;line-height:1.8;}
+.tip strong{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="logo">Trade<span>Sync</span></div>
+  <div class="user-info">
+    <div class="avatar" id="avatarLetter">?</div>
+    <div>
+      <div class="user-name" id="userName">Loading...</div>
+      <div class="user-role" id="userRole">—</div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <!-- HOST LOBBY -->
+  <div class="lobby-card" id="hostLobby" style="display:none;">
+    <div class="card-header">
+      <div class="card-header-icon">🖥️</div>
+      <div class="card-header-title">Start a Session</div>
+      <div class="card-header-sub">Share your room code or invite link with viewers</div>
+    </div>
+    <div class="card-body">
+      <div class="room-code-box">
+        <div class="room-code-label">Your Room Code</div>
+        <div class="room-code" id="roomCodeDisplay">------</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-copy" id="copyCodeBtn" onclick="copyCode()">
+          <span>📋</span> Copy Code
+        </button>
+        <button class="btn-copy" id="copyLinkBtn" onclick="copyLink()">
+          <span>🔗</span> Copy Invite Link
+        </button>
+      </div>
+      <button class="btn-start" onclick="startSession()">
+        🚀 Start Session
+      </button>
+      <div class="tip">
+        Share the <strong>Room Code</strong> or the <strong>Invite Link</strong> with your viewers.<br/>
+        They can join from the Viewer lobby without an account.
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEWER LOBBY -->
+  <div class="lobby-card" id="viewerLobby" style="display:none;">
+    <div class="card-header">
+      <div class="card-header-icon">👁️</div>
+      <div class="card-header-title">Join a Session</div>
+      <div class="card-header-sub">Paste an invite link or enter the room code to connect</div>
+    </div>
+    <div class="card-body">
+      <div class="error" id="joinError"></div>
+      <label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:8px;">Paste Invite Link</label>
+      <input class="join-input" id="linkInput" type="text" placeholder="https://tradesync.onrender.com/viewer?room=ABC123"/>
+      <div class="or-divider">OR</div>
+      <label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:8px;">Type Room Code</label>
+      <input class="join-input code-input" id="codeInput" type="text" maxlength="6" placeholder="ABC123" oninput="this.value=this.value.toUpperCase()"/>
+      <button class="btn-join" onclick="joinSession()">Join Session →</button>
+      <div class="tip">
+        Ask your host for their <strong>Room Code</strong> or <strong>Invite Link</strong>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Auth Guard ─────────────────────────────────────────
+const session = JSON.parse(localStorage.getItem('ts_session') || 'null');
+if (!session) window.location.href = '/';
+
+// ── Populate UI ────────────────────────────────────────
+const { name, role } = session;
+document.getElementById('avatarLetter').textContent = name.charAt(0).toUpperCase();
+document.getElementById('userName').textContent = name;
+document.getElementById('userRole').textContent = role === 'host' ? '🖥 Host' : '👁 Viewer';
+
+// ── Generate Room Code (for host) ──────────────────────
+let roomCode = '';
+if (role === 'host') {
+  roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  document.getElementById('roomCodeDisplay').textContent = roomCode;
+  document.getElementById('hostLobby').style.display = 'block';
+} else {
+  document.getElementById('viewerLobby').style.display = 'block';
+}
+
+function getBaseUrl() {
+  return window.location.origin;
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(roomCode).then(() => {
+    const btn = document.getElementById('copyCodeBtn');
+    btn.innerHTML = '<span>✅</span> Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.innerHTML = '<span>📋</span> Copy Code';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function copyLink() {
+  const link = `${getBaseUrl()}/viewer?room=${roomCode}`;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.getElementById('copyLinkBtn');
+    btn.innerHTML = '<span>✅</span> Link Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.innerHTML = '<span>🔗</span> Copy Invite Link';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function startSession() {
+  window.location.href = `/host?room=${roomCode}`;
+}
+
+function joinSession() {
+  const errEl = document.getElementById('joinError');
+  errEl.classList.remove('show');
+
+  const rawLink = document.getElementById('linkInput').value.trim();
+  const rawCode = document.getElementById('codeInput').value.trim().toUpperCase();
+
+  let finalCode = '';
+
+  if (rawLink) {
+    try {
+      const url = new URL(rawLink);
+      const code = url.searchParams.get('room');
+      if (code) finalCode = code.toUpperCase();
+      else throw new Error('Missing room parameter');
+    } catch {
+      errEl.textContent = 'Invalid invite link. Please check and try again.';
+      errEl.classList.add('show');
+      return;
+    }
+  } else if (rawCode.length === 6) {
+    finalCode = rawCode;
+  } else {
+    errEl.textContent = 'Please paste an invite link or enter a 6-character room code.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  window.location.href = `/viewer?room=${finalCode}`;
+}
+
+function logout() {
+  localStorage.removeItem('ts_session');
+  window.location.href = '/';
+}
+
+// Allow pressing Enter to join
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && role === 'viewer') joinSession();
+});
+</script>
+</body>
+</html>

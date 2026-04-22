@@ -137,6 +137,13 @@ audio#remoteAudio{display:none;}
 <div class="toast" id="toast"></div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+// ─── Auth Guard ───────────────────────────────────────
+const _session = JSON.parse(localStorage.getItem('ts_session') || 'null');
+if (!_session) window.location.href = '/';
+const _hostName = _session ? _session.name : 'Host';
+document.querySelector('.logo').innerHTML = `Trade<span>Sync</span> <span style="color:var(--muted);font-size:11px;margin-left:6px;">HOST</span> <span style="color:var(--accent);font-size:11px;margin-left:6px;">· ${_hostName}</span>`;
+</script>
+<script>
 // ─── FPS ─────────────────────────────────────────────
 let frameCount = 0, lastFpsTime = performance.now();
 (function fpsLoop(){
