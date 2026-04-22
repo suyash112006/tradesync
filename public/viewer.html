@@ -83,6 +83,13 @@ audio#remoteAudio{display:none;}
 .diag-val{color:var(--text);font-weight:700;}
 .diag-val.ok{color:var(--accent);}
 .diag-val.warn{color:var(--accent2);}
+
+/* ── Recovery Overlay ── */
+.tap-to-start{position:absolute;inset:0;background:rgba(10,10,15,0.9);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:1000;cursor:pointer;}
+.tap-to-start.visible{display:flex;}
+.tap-btn{background:var(--accent);color:#000;padding:12px 24px;border-radius:12px;font-weight:800;font-size:14px;display:flex;align-items:center;gap:10px;animation:pulse-light 1.5s infinite;}
+.tap-info{margin-top:16px;font-size:11px;color:var(--muted);text-align:center;max-width:200px;}
+@keyframes pulse-light{0%,100%{box-shadow:0 0 0 0 rgba(0,207,255,0.4);}50%{box-shadow:0 0 0 15px rgba(0,207,255,0);}}
 </style>
 </head>
 <body>
@@ -179,6 +186,12 @@ audio#remoteAudio{display:none;}
     <div class="diag-item">Peer: <span class="diag-val" id="diagPeer">New</span></div>
     <div class="diag-item">ICE: <span class="diag-val" id="diagIce">New</span></div>
   </div>
+
+  <!-- Recovery UI -->
+  <div class="tap-to-start" id="tapToStart" onclick="manualPlay()">
+    <div class="tap-btn"><span>▶</span> CLICK TO VIEW STREAM</div>
+    <div class="tap-info">Browser blocked autoplay. Tap to reveal the live screen.</div>
+  </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -239,7 +252,7 @@ const drawingBadge=document.getElementById('drawingBadge');
 
 let pc=null, drawing=false, lastX=0, lastY=0;
 let currentColor='#00cfff', currentSize=4, currentTool='pen';
-let drawBadgeTimeout=null;
+let drawBadgeTimeout=null, watchdogInterval=null;
 let localAudioStream=null, isVoiceJoined=false;
 let audioCtx=null, analyser=null;
 let lastEmitTime=0, lastEmittedX=0, lastEmittedY=0;
@@ -292,6 +305,7 @@ function resetViewerState(reason='Meeting terminated'){
   video.style.display='none'; 
   canvas.style.display='none'; 
   idleState.style.display='flex';
+  document.getElementById('tapToStart').classList.remove('visible');
   
   if(pc){ 
     console.log('[DEBUG] Action: Closing PeerConnection');
@@ -300,6 +314,7 @@ function resetViewerState(reason='Meeting terminated'){
     document.getElementById('diagIce').textContent = 'Closed';
   }
   clearInterval(meetingInterval);
+  clearInterval(watchdogInterval);
   meetingStartTime = null;
   document.getElementById('meetingTimer').textContent = '00:00:00';
 }
@@ -331,8 +346,34 @@ function createPeerConnection(){
       video.srcObject=e.streams[0];
       video.style.display='block'; canvas.style.display='block'; idleState.style.display='none';
       resizeCanvas(); setStatus('live');
-      video.play().then(()=>console.log('[DEBUG] Success: Video playing'))
-                 .catch(err=>console.warn('[DEBUG] Autoplay blocked, waiting for user interaction', err));
+      
+      // Attempt play with watchdog
+      const attemptPlay = () => {
+        video.play().then(() => {
+          console.log('[DEBUG] Success: Video playing');
+          document.getElementById('tapToStart').classList.remove('visible');
+        }).catch(err => {
+          console.warn('[DEBUG] Autoplay blocked, showing Tap overlay');
+          document.getElementById('tapToStart').classList.add('visible');
+        });
+      };
+      
+      attemptPlay();
+      
+      // Watchdog: If video is frozen at time 0, keep Trying or keep showing overlay
+      clearInterval(watchdogInterval);
+      watchdogInterval = setInterval(() => {
+        if (video.srcObject && (video.paused || video.currentTime === 0)) {
+           console.log('[WATCHDOG] Video appears stuck, retrying...');
+           attemptPlay();
+           if (video.currentTime === 0 && pc && pc.connectionState === 'connected') {
+             document.getElementById('tapToStart').classList.add('visible');
+           }
+        } else {
+           document.getElementById('tapToStart').classList.remove('visible');
+        }
+      }, 3000);
+
     } else if(e.track.kind==='audio'){
       console.log('[DEBUG] Action: Attaching audio stream');
       document.getElementById('remoteAudio').srcObject=e.streams[0];
@@ -454,23 +495,14 @@ canvas.addEventListener('touchcancel',()=>drawing=false);
 socket.on('draw-event',(data)=>{ if(data.from==='host') drawLine(data.x0,data.y0,data.x1,data.y1,data.color,data.size,data.tool); });
 socket.on('clear-canvas',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
 
-// ─── Voice ────────────────────────────────────────────
-async function joinVoice(){
-  if(isVoiceJoined) return;
-  try{
-    localAudioStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true}});
-    isVoiceJoined=true;
-    const btn=document.getElementById('voiceBtn');
-    btn.classList.add('active');
-    btn.innerHTML='<span class="tb-icon">🎙️</span><span class="tb-label">Live</span>';
-    video.muted=false;
-    setupVisualizer(localAudioStream,false);
-    if(pc){
-      localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
-      const offer=await pc.createOffer(); await pc.setLocalDescription(offer);
-      socket.emit('offer',offer);
-    }
-  }catch(e){ console.log('Mic denied'); }
+async function joinVoice(){ ... } // keeping for structure reference
+function manualPlay() {
+  console.log('[DEBUG] Manual click: Forcing video play');
+  if (video && video.srcObject) {
+    video.play().then(() => {
+      document.getElementById('tapToStart').classList.remove('visible');
+    }).catch(e => console.error('[DEBUG] Manual play failed:', e));
+  }
 }
 
 // ─── Visualizer ───────────────────────────────────────

@@ -332,6 +332,11 @@ function stopSharing(){
 function createPeerConnection(){
   if(pc) pc.close();
   pc = new RTCPeerConnection(ICE_CONFIG);
+  
+  // Force transceivers to sendonly for better negotiation
+  pc.addTransceiver('video', { direction: 'sendonly' });
+  if (isMicOn) pc.addTransceiver('audio', { direction: 'sendonly' });
+
   if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
   if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
   pc.onicecandidate=({candidate})=>{
