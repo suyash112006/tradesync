@@ -345,6 +345,11 @@ function formatDuration(ms){
 function createPeerConnection(){
   if(pc) return;
   pc=new RTCPeerConnection(ICE_CONFIG);
+  
+  // Explicitly set as receiver for stability
+  pc.addTransceiver('video', { direction: 'recvonly' });
+  pc.addTransceiver('audio', { direction: 'recvonly' });
+
   pc.ontrack=(e)=>{
     console.log('[DEBUG] Event: pc.ontrack fired', e.track.kind);
     if(e.track.kind==='video'){

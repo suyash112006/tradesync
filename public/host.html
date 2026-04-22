@@ -218,7 +218,7 @@ socket.on('connect', ()=>{
   socket.emit('register-host', roomId); 
 });
 socket.on('viewer-joined', ()=>{
-  setConn(true); log('Viewer joined room! Starting handshake...','ok');
+  setConn(true); log('Viewer joined room!','ok');
   console.log('[DEBUG] Event: viewer-joined received from server');
   if(localStream){ 
     setTimeout(() => {
@@ -226,7 +226,7 @@ socket.on('viewer-joined', ()=>{
       initiateOffer(); 
     }, 500);
   } else {
-    console.warn('[DEBUG] Warning: Viewer joined but localStream is null!');
+    console.warn('[DEBUG] Warning: Viewer joined but localStream is missing. Handshake will trigger automatically when you click Share.');
   }
 });
 socket.on('peer-disconnected', ()=>{ setConn(false); log('Viewer disconnected','err'); });
@@ -283,6 +283,13 @@ async function startSharing(){
     meetingStartTime = Date.now();
     socket.emit('session-start', meetingStartTime);
     startMeetingTimer();
+
+    // If viewer is already here, sync now!
+    const isViewerConnected = document.getElementById('connDot').className.includes('green');
+    if(isViewerConnected){
+      console.log('[DEBUG] Viewer is already connected, initiating sync immediately...');
+      setTimeout(initiateOffer, 500);
+    }
     
     clearInterval(meetingSyncInterval);
     meetingSyncInterval = setInterval(() => {
