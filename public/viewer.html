@@ -71,6 +71,13 @@ audio#remoteAudio{display:none;}
 .tb-label{font-size:9px;font-weight:700;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;}
 .tb-sep{width:1px;height:36px;background:var(--border);margin:0 2px;}
 .cur-color-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);display:inline-block;vertical-align:middle;margin-bottom:2px;}
+
+/* ── Connection Diagnostics ── */
+.conn-debug{position:absolute;bottom:0;left:0;right:0;height:24px;background:rgba(0,0,0,0.85);display:flex;align-items:center;padding:0 12px;gap:12px;z-index:999;border-top:1px solid var(--border);font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;}
+.diag-item{display:flex;align-items:center;gap:4px;}
+.diag-val{color:var(--text);font-weight:700;}
+.diag-val.ok{color:var(--accent);}
+.diag-val.warn{color:var(--accent2);}
 </style>
 </head>
 <body>
@@ -160,6 +167,13 @@ audio#remoteAudio{display:none;}
       <span class="tb-label">Full</span>
     </button>
   </div>
+
+  <!-- Connection Diagnostics -->
+  <div class="conn-debug">
+    <div class="diag-item">Signaling: <span class="diag-val" id="diagSignaling">Offline</span></div>
+    <div class="diag-item">Peer: <span class="diag-val" id="diagPeer">New</span></div>
+    <div class="diag-item">ICE: <span class="diag-val" id="diagIce">New</span></div>
+  </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -197,6 +211,11 @@ const ICE_CONFIG = {
 };
 
 const socket=io({transports:['websocket']});
+socket.on('connect', () => {
+  const el = document.getElementById('diagSignaling');
+  el.textContent = 'Live'; el.className = 'diag-val ok';
+});
+
 const urlParams = new URLSearchParams(window.location.search);
 const roomId = urlParams.get('room');
 
@@ -296,6 +315,18 @@ function createPeerConnection(){
     }
   };
   pc.onicecandidate=(e)=>{ if(e.candidate) socket.emit('ice-candidate',e.candidate); };
+  pc.onconnectionstatechange=()=>{
+    const s = pc.connectionState;
+    const el = document.getElementById('diagPeer');
+    el.textContent = s;
+    el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
+  };
+  pc.oniceconnectionstatechange=()=>{
+    const s = pc.iceConnectionState;
+    const el = document.getElementById('diagIce');
+    el.textContent = s;
+    el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
+  };
   pc.onconnectionstatechange=()=>{};
   if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
 }

@@ -66,6 +66,13 @@ audio#remoteAudio{display:none;}
 /* ── Toast ── */
 .toast{position:fixed;bottom:80px;right:20px;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--accent);font-family:'JetBrains Mono',monospace;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;}
 .toast.show{opacity:1;transform:translateY(0);}
+
+/* ── Connection Diagnostics ── */
+.conn-debug{position:absolute;bottom:0;left:0;right:0;height:24px;background:rgba(0,0,0,0.85);display:flex;align-items:center;padding:0 12px;gap:12px;z-index:999;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;}
+.diag-item{display:flex;align-items:center;gap:4px;}
+.diag-val{color:var(--text);font-weight:700;}
+.diag-val.ok{color:var(--accent);}
+.diag-val.warn{color:var(--warn);}
 </style>
 </head>
 <body>
@@ -132,6 +139,13 @@ audio#remoteAudio{display:none;}
 
   <!-- Log popup -->
   <div class="log-popup" id="logPopup"></div>
+  
+  <!-- Connection Diagnostics -->
+  <div class="conn-debug">
+    <div class="diag-item">Signaling: <span class="diag-val" id="diagSignaling">Offline</span></div>
+    <div class="diag-item">Peer: <span class="diag-val" id="diagPeer">New</span></div>
+    <div class="diag-item">ICE: <span class="diag-val" id="diagIce">New</span></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -169,6 +183,8 @@ const ICE_CONFIG = {
 };
 
 const socket = io({transports:['websocket']});
+socket.on('connect', () => document.getElementById('diagSignaling').className = 'diag-val ok', document.getElementById('diagSignaling').textContent = 'Live');
+
 const urlParams = new URLSearchParams(window.location.search);
 let roomId = urlParams.get('room');
 if (!roomId) {
@@ -195,8 +211,11 @@ socket.on('connect', ()=>{
 socket.on('viewer-joined', ()=>{
   setConn(true); log('Viewer connected!','ok');
   if(localStream){ 
-    log('Initiating fast stream sync...', 'info');
-    initiateOffer({ iceRestart: true }); 
+    log('Stabilizing signaling connection... (800ms)','info');
+    setTimeout(() => {
+      log('Initiating fast stream sync...', 'info');
+      initiateOffer({ iceRestart: true }); 
+    }, 800);
   }
 });
 socket.on('peer-disconnected', ()=>{ setConn(false); log('Viewer disconnected','err'); });
@@ -297,7 +316,19 @@ function createPeerConnection(){
   if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
   if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
   pc.onicecandidate=({candidate})=>{ if(candidate) socket.emit('ice-candidate',candidate); };
-  pc.onconnectionstatechange=()=>log('WebRTC: '+pc.connectionState,'info');
+  pc.onconnectionstatechange=()=>{
+    const s = pc.connectionState;
+    const el = document.getElementById('diagPeer');
+    el.textContent = s;
+    el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
+    log('WebRTC: '+s,'info');
+  };
+  pc.oniceconnectionstatechange=()=>{
+    const s = pc.iceConnectionState;
+    const el = document.getElementById('diagIce');
+    el.textContent = s;
+    el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
+  };
   pc.ontrack=(e)=>{
     if(e.track.kind==='audio'){
       document.getElementById('remoteAudio').srcObject=e.streams[0];
