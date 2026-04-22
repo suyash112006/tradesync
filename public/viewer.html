@@ -495,7 +495,25 @@ canvas.addEventListener('touchcancel',()=>drawing=false);
 socket.on('draw-event',(data)=>{ if(data.from==='host') drawLine(data.x0,data.y0,data.x1,data.y1,data.color,data.size,data.tool); });
 socket.on('clear-canvas',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
 
-async function joinVoice(){ ... } // keeping for structure reference
+// ─── Voice ────────────────────────────────────────────
+async function joinVoice(){
+  if(isVoiceJoined) return;
+  try{
+    localAudioStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true}});
+    isVoiceJoined=true;
+    const btn=document.getElementById('voiceBtn');
+    btn.classList.add('active');
+    btn.innerHTML='<span class="tb-icon">🎙️</span><span class="tb-label">Live</span>';
+    video.muted=false;
+    setupVisualizer(localAudioStream,false);
+    if(pc){
+      localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
+      const offer=await pc.createOffer(); await pc.setLocalDescription(offer);
+      socket.emit('offer',offer);
+    }
+  }catch(e){ console.log('Mic denied'); }
+}
+
 function manualPlay() {
   console.log('[DEBUG] Manual click: Forcing video play');
   if (video && video.srcObject) {
