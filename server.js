@@ -8,6 +8,7 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.set('trust proxy', 1);
 app.get('/', (req, res) => res.redirect('/viewer'));
 app.get('/host', (req, res) => res.sendFile(path.join(__dirname, 'public', 'host.html')));
 app.get('/viewer', (req, res) => res.sendFile(path.join(__dirname, 'public', 'viewer.html')));
