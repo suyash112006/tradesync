@@ -184,7 +184,7 @@ const ICE_CONFIG = {
     { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
   ],
-  iceCandidatePoolSize: 10
+  iceCandidatePoolSize: 0
 };
 
 const socket = io({transports:['websocket']});

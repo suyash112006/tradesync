@@ -212,7 +212,7 @@ const ICE_CONFIG = {
     { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
   ],
-  iceCandidatePoolSize: 10
+  iceCandidatePoolSize: 0
 };
 
 const socket=io({transports:['websocket']});
@@ -313,11 +313,16 @@ function createPeerConnection(){
   if(pc) return;
   pc=new RTCPeerConnection(ICE_CONFIG);
   pc.ontrack=(e)=>{
+    console.log('[DEBUG] Event: pc.ontrack fired', e.track.kind);
     if(e.track.kind==='video'){
+      console.log('[DEBUG] Action: Attaching video stream');
       video.srcObject=e.streams[0];
       video.style.display='block'; canvas.style.display='block'; idleState.style.display='none';
       resizeCanvas(); setStatus('live');
+      video.play().then(()=>console.log('[DEBUG] Success: Video playing'))
+                 .catch(err=>console.warn('[DEBUG] Autoplay blocked, waiting for user interaction', err));
     } else if(e.track.kind==='audio'){
+      console.log('[DEBUG] Action: Attaching audio stream');
       document.getElementById('remoteAudio').srcObject=e.streams[0];
       setupVisualizer(e.streams[0], true);
     }
@@ -520,6 +525,11 @@ function closeAllPopups(){
 }
 document.addEventListener('click',(e)=>{
   if(!e.target.closest('.toolbar') && !e.target.closest('.color-popup') && !e.target.closest('.size-popup')) closeAllPopups();
+  // Force play on click to bypass browser autoplay policies
+  if(video && video.srcObject && video.paused) {
+    console.log('[DEBUG] User clicked - forcing video play');
+    video.play().catch(e=>console.error('[DEBUG] Failed to force play on click', e));
+  }
 });
 </script>
 </body>
