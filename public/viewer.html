@@ -323,36 +323,42 @@ function createPeerConnection(){
   pc.ontrack=(e)=>{
     console.log("TRACK RECEIVED", e); 
     if(e.track.kind==='video'){
-      isAttaching = true;
-      video.srcObject = e.streams[0]; // GOLDEN FIX: Use stream instead of track
+      const stream = e.streams[0]; // ✅ FIX: Use stream
+      video.srcObject = stream;
       
-      video.style.display = 'block';
-      video.style.opacity = '1';
-      canvas.style.display = 'block'; 
-      idleState.style.display = 'none';
+      video.style.display = "block";
+      video.style.visibility = "visible";
+      video.style.opacity = "1";
       
+      canvas.style.display = "block"; 
+      idleState.style.display = "none";
+      
+      video.play().then(() => {
+        console.log("VIDEO PLAYING");
+        document.getElementById('tapToStart').classList.remove('visible');
+      }).catch(() => {
+        console.log("AUTOPLAY BLOCKED");
+        document.getElementById('tapToStart').classList.add('visible');
+      });
+
+      // 🧪 Safety check: check if video is actually ready
+      setTimeout(() => {
+        console.log("Video readyState:", video.readyState);
+      }, 2000);
+
       resizeCanvas(); 
       setStatus('live');
-      
-      const attemptPlay = () => {
-        if (!video.srcObject) return;
-        video.play().then(() => {
-          document.getElementById('tapToStart').classList.remove('visible');
-        }).catch(err => {
-          document.getElementById('tapToStart').classList.add('visible');
-        });
-      };
-      
-      attemptPlay();
-      e.track.onunmute = attemptPlay;
       
       clearInterval(watchdogInterval);
       watchdogInterval = setInterval(() => {
         if (!pc || pc.connectionState === 'closed') { clearInterval(watchdogInterval); return; }
-        if (video.srcObject && (video.paused || video.currentTime === 0)) attemptPlay();
+        if (video.srcObject && (video.paused || video.currentTime === 0)) {
+           video.play().catch(()=>{});
+        }
       }, 5000); 
     }
   };
+
 
 
   pc.onicecandidate=(e)=>{
