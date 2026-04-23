@@ -140,6 +140,10 @@ body{
       <span class="tb-icon">🖥️</span>
       <span class="tb-label">Share</span>
     </button>
+    <button class="tb-btn" id="switchBtn" onclick="startSharing(true)" style="display:none;">
+      <span class="tb-icon">🔄</span>
+      <span class="tb-label">Switch</span>
+    </button>
     <button class="tb-btn" id="stopBtn" onclick="stopSharing()" style="display:none;">
       <span class="tb-icon">⏹️</span>
       <span class="tb-label">Stop</span>
@@ -307,22 +311,43 @@ function showDrawIndicator(){
 }
 
 // ─── Screen Share ─────────────────────────────────────
-async function startSharing(){
+async function startSharing(isSwitch = false){
   try{
-    log('Requesting screen capture...','info');
-    localStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
-    const v=document.getElementById('localVideo'); v.srcObject=localStream; v.style.display='block';
-    document.getElementById('idleScreen').style.display='none';
-    setStream(true);
-    document.getElementById('shareBtn').style.display='none';
-    document.getElementById('stopBtn').style.display='flex';
-    log('Screen sharing started','ok');
-    localStream.getVideoTracks()[0].onended=()=>stopSharing();
-    createPeerConnection(); initiateOffer();
+    log(isSwitch ? 'Switching screen source...' : 'Requesting screen capture...','info');
+    const newStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+    const newTrack = newStream.getVideoTracks()[0];
+
+    if (isSwitch && pc) {
+       // Seamlessly replace the track in the existing connection
+       const senders = pc.getSenders();
+       const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+       if (videoSender) {
+          await videoSender.replaceTrack(newTrack);
+          log('Screen source switched successfully!','ok');
+       }
+       // Update local previews
+       if(localStream) localStream.getTracks().forEach(t=>t.stop());
+       localStream = newStream;
+       document.getElementById('localVideo').srcObject = localStream;
+       document.getElementById('diagVideo').srcObject = localStream;
+    } else {
+       // Standard start
+       localStream = newStream;
+       const v=document.getElementById('localVideo'); v.srcObject=localStream; v.style.display='block';
+       document.getElementById('idleScreen').style.display='none';
+       setStream(true);
+       document.getElementById('shareBtn').style.display='none';
+       document.getElementById('switchBtn').style.display='flex';
+       document.getElementById('stopBtn').style.display='flex';
+       log('Screen sharing started','ok');
+       createPeerConnection(); initiateOffer();
+    }
+
+    newTrack.onended = () => stopSharing();
     meetingStartTime = Date.now();
     socket.emit('session-start', meetingStartTime);
     startMeetingTimer();
-  }catch(e){ log('Share cancelled or denied','err'); }
+  }catch(e){ log('Share cancelled or denied','err'); console.error(e); }
 }
 
 function startMeetingTimer(){
@@ -351,6 +376,7 @@ function stopSharing(){
   document.getElementById('previewBtn').classList.remove('active');
   setStream(false);
   document.getElementById('shareBtn').style.display='flex';
+  document.getElementById('switchBtn').style.display='none';
   document.getElementById('stopBtn').style.display='none';
   
   // Stop timer, sync & heartbeat
