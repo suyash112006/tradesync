@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSync — Viewer (Manual)</title>
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <title>TradeSync — Viewer (Hardened)</title>
+  <script src="/peerjs.min.js"></script>
   <style>
+
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     #video { width: 80%; border-radius: 12px; border: 2px solid #00cfff; background: black; margin-bottom: 20px; }
     .controls { background: #111; padding: 20px; border-radius: 8px; border: 1px solid #333; display: flex; gap: 10px; }
@@ -51,17 +52,24 @@
       }
 
       document.getElementById("status").innerText = "Connecting to Host...";
-      // 🔥 One-way call to avoid PeerJS sync issues
-      const call = peer.call(hostId, new MediaStream());
+      // 🔥 One-way call to avoid PeerJS sync issues (passing null)
+      const call = peer.call(hostId, null);
 
       call.on('stream', stream => {
         console.log("Stream received! ✅");
         const video = document.getElementById("video");
         video.srcObject = stream;
-        video.play().catch(e => console.warn("Autoplay blocked, click anywhere to play."));
+        
+        // 🔥 Hardware decoder kickstart
+        video.play().catch(e => console.warn("Autoplay blocked."));
+        setTimeout(() => { 
+          if(video.paused) video.play(); 
+        }, 1000);
+
         document.getElementById("status").innerText = "Streaming LIVE";
         document.querySelector(".controls").style.display = "none";
       });
+
 
 
       call.on('error', err => {
