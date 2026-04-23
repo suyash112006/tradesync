@@ -10,10 +10,11 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
+// 🔥 Files in public/ are served automatically (including livekit-client.js)
 app.use(express.static('public'));
 app.use(express.json());
 
-// 🔥 LiveKit Dev Credentials (Default for livekit-server --dev)
+// 🔥 LiveKit Dev Credentials
 const API_KEY = 'devkey';
 const API_SECRET = 'secret';
 
@@ -49,5 +50,5 @@ app.get('*', (req, res) => {
 const PORT = 3000;
 server.listen(PORT, () => {
   console.log(`TradeSync Server Live on http://localhost:${PORT}`);
-  console.log(`🔗 Token Route: /getToken`);
+  console.log(`🚀 Token Route: /getToken`);
 });
