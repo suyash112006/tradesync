@@ -14,10 +14,12 @@
   <h1>TradeSync Viewer (PeerJS)</h1>
   <video id="remoteVideo" autoplay playsinline></video>
   <div id="status">Connecting to host...</div>
+  <button id="callBtn" onclick="tryCall()" style="margin-top: 20px; padding: 10px 20px; background: #00cfff; border: none; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; display: none;">Join Stream</button>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const roomId = urlParams.get('room') || 'DEFAULT_ROOM';
+    let streamReceived = false;
     
     const peer = new Peer({
       config: {
@@ -32,21 +34,38 @@
       }
     });
 
-    peer.on('open', (id) => {
-      console.log('My peer ID is: ' + id);
+    function tryCall() {
+      if (streamReceived) return;
+      console.log('[PEER] Calling host:', roomId + '-host');
       const call = peer.call(roomId + '-host', new MediaStream());
       
       call.on('stream', (remoteStream) => {
-        console.log('Stream received!');
+        console.log('[PEER] Stream received! ✅');
+        streamReceived = true;
         document.getElementById('remoteVideo').srcObject = remoteStream;
         document.getElementById('status').innerText = 'Streaming Live';
+        document.getElementById('callBtn').style.display = 'none';
       });
 
-      call.on('error', (err) => {
-        console.error('Call error:', err);
-        document.getElementById('status').innerText = 'Host not found. Refreshing...';
-      });
+      // Timeout for UI update
+      setTimeout(() => {
+        if (!streamReceived) {
+          document.getElementById('status').innerText = 'Still waiting for host...';
+          document.getElementById('callBtn').style.display = 'block';
+        }
+      }, 3000);
+    }
+
+    peer.on('open', (id) => {
+      console.log('My peer ID is: ' + id);
+      tryCall();
     });
+
+    // 🔥 Auto-Retry every 10 seconds if no stream
+    setInterval(() => {
+      if (!streamReceived) tryCall();
+    }, 10000);
   </script>
+
 </body>
 </html>

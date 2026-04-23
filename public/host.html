@@ -45,11 +45,14 @@
     }
 
     peer.on('call', (call) => {
-      console.log('Receiving call from viewer...');
+      console.log('[PEER] Receiving call from viewer... Answering with stream ✅');
       if (localStream) {
         call.answer(localStream);
+      } else {
+        console.warn('[PEER] Call received but localStream is not ready yet!');
       }
     });
+
   </script>
 </body>
 </html>
