@@ -2,10 +2,23 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const Turn = require('node-turn');
+
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
+
+// ─── Internal TURN Server ────────────────────────────
+const turnServer = new Turn({
+  authMech: 'long-term',
+  credentials: {
+    "tradesync": "tradesync_secure_2024"
+  }
+});
+turnServer.start();
+console.log('[TURN] Internal relay started on port 3478');
+
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('trust proxy', 1);
