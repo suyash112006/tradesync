@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>TradeSync — Host</title>
+  <script src="/socket.io/socket.io.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     #localVideo { width: 80%; border-radius: 12px; border: 2px solid #00e5a0; background: black; }
@@ -16,24 +18,19 @@
   <button id="shareBtn" onclick="startSharing()">Start Screen Share</button>
 
   <script>
+    const socket = io();
     const urlParams = new URLSearchParams(window.location.search);
     const roomId = urlParams.get('room') || 'DEFAULT_ROOM';
     
-    // 🔥 OpenRelay TURN Config
-    const peer = new Peer(roomId + '-host', {
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          {
-            urls: "turn:openrelay.metered.ca:80?transport=udp",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          }
-        ]
-      }
-    });
+    // 🔥 Fresh Unique ID per session to avoid collisions
+    const peer = new Peer();
 
     let localStream;
+
+    peer.on('open', (id) => {
+      console.log('[PEER] Host ID registered:', id);
+      socket.emit('register-host', { roomId, peerId: id });
+    });
 
     async function startSharing() {
       localStream = await navigator.mediaDevices.getDisplayMedia({
@@ -41,18 +38,15 @@
       });
       document.getElementById('localVideo').srcObject = localStream;
       document.getElementById('shareBtn').style.display = 'none';
-      console.log('Sharing started. Peer ID:', peer.id);
     }
 
     peer.on('call', (call) => {
-      console.log('[PEER] Receiving call from viewer... Answering with stream ✅');
+      console.log('[PEER] Answering incoming call... ✅');
       if (localStream) {
         call.answer(localStream);
-      } else {
-        console.warn('[PEER] Call received but localStream is not ready yet!');
       }
     });
-
   </script>
+
 </body>
 </html>
