@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSync — Viewer (Auto-Pilot)</title>
+  <title>TradeSync — Viewer (Hardened)</title>
   <script src="/peerjs.min.js"></script>
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
@@ -18,10 +18,6 @@
     const urlParams = new URLSearchParams(window.location.search);
     const hostId = urlParams.get('id');
 
-    if (!hostId) {
-      document.getElementById("status").innerText = "❌ Error: No Host ID provided in URL";
-    }
-
     const peer = new Peer({
       config: {
         iceServers: [
@@ -36,48 +32,43 @@
             username: "openrelayproject",
             credential: "openrelayproject"
           }
-        ],
-        iceCandidatePoolSize: 10
+        ]
       }
     });
 
-    let connWatchdog;
-
-    peer.on('open', id => {
-      console.log("VIEWER ID:", id);
+    peer.on('open', () => {
+      console.log("VIEWER READY. AUTO-CONNECT TO:", hostId);
       if (hostId) {
-        document.getElementById("status").innerText = "🔗 Auto-Connecting to Host...";
-        setTimeout(() => connectToHost(hostId), 500);
+        document.getElementById("status").innerText = "🔗 Connecting to Host...";
+        connectToHost(hostId);
       }
     });
 
-    function connectToHost(hostId) {
-      const call = peer.call(hostId, new MediaStream());
+    function connectToHost(id) {
+      // ✅ CRITICAL: Using null for Receive-Only call
+      const call = peer.call(id, null);
 
-      // 🔥 Watchdog: If no stream in 5s, re-kick the hardware
-      clearTimeout(connWatchdog);
-      connWatchdog = setTimeout(() => {
-        if (document.getElementById("status").innerText !== "Streaming LIVE") {
-          console.log("[WATCHDOG] Stream stalled. Re-kicking...");
-          connectToHost(hostId);
-        }
-      }, 5000);
-
-      if (call) {
-        call.on('stream', stream => {
-          clearTimeout(connWatchdog);
-          console.log("Stream received! ✅");
-          const video = document.getElementById("video");
-          video.srcObject = stream;
-          video.play().catch(e => console.warn("Autoplay blocked."));
-          document.getElementById("status").innerText = "Streaming LIVE";
-        });
-
-        call.on('error', err => {
-          console.error("Call error:", err);
-          document.getElementById("status").innerText = "❌ Connection failed: " + err.type;
-        });
+      if (!call) {
+        console.warn("Call failed to initiate. Retrying...");
+        setTimeout(() => connectToHost(id), 1000);
+        return;
       }
+
+      call.on('stream', stream => {
+        console.log("✅ STREAM RECEIVED");
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+        
+        video.onloadedmetadata = () => {
+          video.play().catch(e => console.warn("Autoplay block:", e));
+          document.getElementById("status").innerText = "Streaming LIVE";
+        };
+      });
+
+      call.on('error', err => {
+        console.error("CALL ERROR:", err);
+        document.getElementById("status").innerText = "❌ Error: " + err.type;
+      });
     }
   </script>
 </body>
