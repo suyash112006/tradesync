@@ -204,16 +204,25 @@ let frameCount=0, lastFpsTime=performance.now();
 
 // ─── ICE Config ───────────────────────────────────────
 // ─── ICE Config (Smart Fetch) ────────────────────────
-let ICE_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+let ICE_CONFIG = { 
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+  iceTransportPolicy: 'relay', // NUCLEAR: Force TURN relay
+  iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle'
+};
+
 fetch('/api/ice')
   .then(r => r.json())
   .then(cfg => { 
-    ICE_CONFIG = cfg; 
-    ICE_CONFIG.iceCandidatePoolSize = 10;
-    ICE_CONFIG.bundlePolicy = 'max-bundle';
-    console.log('[ICE] Smart Config Loaded'); 
+    ICE_CONFIG = { 
+      ...cfg, 
+      iceTransportPolicy: 'relay', // NUCLEAR: Force TURN relay
+      iceCandidatePoolSize: 10,
+      bundlePolicy: 'max-bundle'
+    }; 
+    console.log('[ICE] Nuclear Config Loaded'); 
   })
-  .catch(() => console.warn('[ICE] Using fallback STUN'));
+  .catch(() => console.warn('[ICE] Fallback'));
 
 
 const socket=io({transports:['websocket']});
