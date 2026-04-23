@@ -432,15 +432,6 @@ function createPeerConnection(vid){
   pcs[vid] = pc;
 
   // 🔥 Set listener BEFORE adding tracks
-  pc.onnegotiationneeded = async () => {
-    try {
-      console.log(`[WEBRTC] Renegotiation needed for ${vid}`);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit('offer', { roomId, target: vid, offer });
-    } catch (e) { console.error('Negotiation failed', e); }
-  };
-
   if(localStream) {
     localStream.getTracks().forEach(t => {
       const sender = pc.addTrack(t, localStream);
@@ -467,11 +458,22 @@ function createPeerConnection(vid){
   pc.onicecandidate=({candidate})=>{
     if(candidate) socket.emit('ice-candidate', { roomId, target: vid, candidate }); 
   };
+
+  pc.onnegotiationneeded = async () => {
+    if (pc.signalingState !== "stable") return; // 🛡️ Prevent collision
+    try {
+      console.log(`[WEBRTC] Renegotiation needed for ${vid}`);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('offer', { roomId, target: vid, offer });
+    } catch (e) { console.error('Negotiation failed', e); }
+  };
 }
 
 async function initiateOffer(vid, options = {}){
   const pc = pcs[vid];
   if(!pc) return;
+  if(pc.signalingState !== 'stable') return;
   try {
     const offer = await pc.createOffer({ ...options, offerToReceiveVideo: true }); 
     await pc.setLocalDescription(offer);
@@ -484,11 +486,13 @@ setInterval(() => {
   if (localStream) {
     Object.keys(pcs).forEach(vid => {
       const pc = pcs[vid];
-      if (pc && pc.connectionState !== 'connected' && pc.connectionState !== 'connecting') {
+      // 🛡️ Only repair if connection is truly dead AND signaling is stable
+      if (pc && pc.connectionState !== 'connected' && pc.connectionState !== 'connecting' && pc.signalingState === 'stable') {
         console.log(`[WATCHDOG] Connection ${vid} not ready, sending repair pulse...`);
         initiateOffer(vid, { iceRestart: true });
       }
     });
+
   }
 }, 15000);
 
