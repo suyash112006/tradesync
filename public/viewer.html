@@ -34,7 +34,7 @@ body{
 
 /* ── Main ── */
 .main{flex:1;position:relative;overflow:hidden;}
-#remoteVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;z-index:1;opacity:1;}
+#remoteVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;z-index:1;opacity:1;background:black;}
 #drawCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:10;display:none;touch-action:none;}
 .idle-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;}
 .idle-icon{width:80px;height:80px;border:2px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--muted);}
@@ -319,33 +319,41 @@ function formatDuration(ms){
 
 function createPeerConnection(){
   if(pc) return;
-  pc=new RTCPeerConnection(ICE_CONFIG);
+  pc=new RTCPeerConnection({...ICE_CONFIG, sdpSemantics: 'unified-plan'});
   pc.ontrack=(e)=>{
     console.log("TRACK RECEIVED", e); 
     if(e.track.kind==='video'){
-      const stream = e.streams[0]; // ✅ FIX: Use stream
+      const stream = new MediaStream();
+      stream.addTrack(e.track); // ✅ SAFE METHOD
       video.srcObject = stream;
       
       video.style.display = "block";
       video.style.visibility = "visible";
       video.style.opacity = "1";
-      
       canvas.style.display = "block"; 
       idleState.style.display = "none";
-      
-      video.muted = true; // ✅Satisfy Autoplay
-      video.playsInline = true;
-      
-      video.play().then(() => {
-        console.log("VIDEO PLAYING");
-        document.getElementById('tapToStart').classList.remove('visible');
-      }).catch(() => {
-        console.log("AUTOPLAY BLOCKED");
-        document.getElementById('tapToStart').classList.add('visible');
-      });
 
-      // 🧪 Safety check: check if video is actually ready
+      video.muted = true;
+      video.playsInline = true;
+
+      video.onloadedmetadata = () => {
+        console.log("METADATA LOADED");
+        video.play().then(() => {
+          console.log("VIDEO PLAYING ✅");
+          document.getElementById('tapToStart').classList.remove('visible');
+        }).catch(err => {
+          console.log("PLAY ERROR:", err);
+          document.getElementById('tapToStart').classList.add('visible');
+        });
+      };
+
+      // 🔥 Force refresh if stuck
       setTimeout(() => {
+        if (video.readyState === 0) {
+          console.log("FORCE RELOAD STREAM");
+          video.srcObject = null;
+          video.srcObject = stream;
+        }
         console.log("Video readyState:", video.readyState);
       }, 2000);
 
@@ -361,6 +369,7 @@ function createPeerConnection(){
       }, 5000); 
     }
   };
+
 
 
 
