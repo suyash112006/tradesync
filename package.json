@@ -13,6 +13,7 @@
     "mediasoup": "^3.19.21",
     "mediasoup-client": "^3.19.0",
     "node-turn": "^0.0.6",
+    "peer": "^1.0.2",
     "peerjs": "^1.5.5",
     "socket.io": "^4.7.2"
   }

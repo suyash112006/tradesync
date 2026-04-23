@@ -2,225 +2,51 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TradeSync — Host (LiveKit)</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
-<script src="/livekit-client.js"></script>
-
+<title>TradeSync — Host (Pro)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet"/>
+<script src="/peerjs.min.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0a0c0f; --surface:#13161c; --border:#1e242d;
-  --accent:#00e5a0; --accent-glow:rgba(0,229,160,0.3);
-  --text:#f0f2f5; --muted:#717c8d; --warn:#ff4d6d;
-}
-body{
-  background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;
-  overflow:hidden;display:flex;flex-direction:column;
-  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
-.logo{font-family:'Inter',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.5px;}
-.logo span{color:var(--accent);}
-.status-row{display:flex;align-items:center;gap:16px;}
-.timer-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--accent);min-width:90px;justify-content:center;}
-.badge{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);background:rgba(255,255,255,0.02);padding:4px 12px;border-radius:20px;border:1px solid var(--border);}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .3s;}
-.dot.green{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite;}
-.dot.red{background:var(--warn);box-shadow:0 0 8px var(--warn);}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.main{flex:1;position:relative;overflow:hidden;}
-#localVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;background:#000;}
-#drawCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;}
-.idle-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
-.idle-icon{font-size:52px;}
-.idle-title{font-size:22px;font-weight:800;}
-.idle-sub{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);text-align:center;line-height:2;}
-.fps-badge{position:absolute;top:12px;right:16px;background:rgba(0,0,0,0.65);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;z-index:30;pointer-events:none;}
-.toolbar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(15,18,23,0.88);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:8px 12px;z-index:100;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
-.tb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 14px;border-radius:10px;border:none;background:transparent;color:var(--text);cursor:pointer;transition:all .18s;min-width:60px;}
-.tb-btn:hover{background:rgba(255,255,255,0.07);}
-.tb-btn.active{background:rgba(0,229,160,0.12);}
-.tb-btn.active .tb-icon{color:var(--accent);}
-.tb-icon{font-size:22px;line-height:1;}
-.tb-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;}
-.tb-sep{width:1px;height:36px;background:var(--border);margin:0 2px;}
-.log-popup{position:absolute;bottom:90px;right:20px;width:280px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;z-index:200;display:none;max-height:200px;overflow-y:auto;}
-.log-popup.open{display:block;}
-.log-line{font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.7;color:var(--muted);}
-.log-line.ok{color:var(--accent);}
-.toast{position:fixed;bottom:80px;right:20px;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--accent);font-family:'JetBrains Mono',monospace;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;}
-.toast.show{opacity:1;transform:translateY(0);}
+  body { background:#0a0c0f; color:#f0f2f5; font-family:'Inter',sans-serif; height:100vh; margin:0; display:flex; flex-direction:column; }
+  .topbar { padding:12px 24px; border-bottom:1px solid #1e242d; background:#13161c; display:flex; justify-content:space-between; }
+  .logo { font-weight:800; font-size:20px; } .logo span { color:#00e5a0; }
+  .main { flex:1; position:relative; overflow:hidden; }
+  #localVideo { width:100%; height:100%; object-fit:contain; background:#000; display:none; }
+  .toolbar { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(15,18,23,0.9); padding:10px 20px; border-radius:12px; display:flex; gap:10px; backdrop-filter:blur(10px); border:1px solid #1e242d; }
+  button { padding:8px 16px; background:#00e5a0; border:none; border-radius:6px; color:#000; font-weight:bold; cursor:pointer; }
+  #inviteLink { color:#717c8d; font-size:11px; margin-top:10px; display:block; }
 </style>
 </head>
 <body>
-
-<div class="topbar">
-  <div class="logo">Trade<span>Sync</span> <span style="color:var(--muted);font-size:11px;margin-left:6px;">HOST</span></div>
-  <div class="status-row">
-    <div class="timer-badge" id="meetingTimer">00:00:00</div>
-    <div class="badge"><div class="dot" id="connDot"></div><span id="connLabel">SFU Offline</span></div>
-    <div class="badge"><div class="dot" id="streamDot"></div><span id="streamLabel">Not sharing</span></div>
-  </div>
-</div>
-
-<div class="main" id="screenArea">
-  <div class="idle-screen" id="idleScreen">
-    <div class="idle-icon">📺</div>
-    <div class="idle-title">SFU Ready</div>
-    <div class="idle-sub">Click <strong>Share Screen</strong> to stream via LiveKit.</div>
-  </div>
+<div class="topbar"><div class="logo">Trade<span>Sync</span> PRO</div><div id="status">Ready</div></div>
+<div class="main">
   <video id="localVideo" autoplay muted playsinline></video>
-  <canvas id="drawCanvas"></canvas>
-  <div class="fps-badge" id="fpsBadge">-- FPS</div>
-
   <div class="toolbar">
-    <button class="tb-btn" id="shareBtn" onclick="startSharing()">
-      <span class="tb-icon">🖥️</span>
-      <span class="tb-label">Share</span>
-    </button>
-    <button class="tb-btn" id="stopBtn" onclick="stopSharing()" style="display:none;">
-      <span class="tb-icon">⏹️</span>
-      <span class="tb-label">Stop</span>
-    </button>
-    <div class="tb-sep"></div>
-    <button class="tb-btn" onclick="copyViewerLink()">
-      <span class="tb-icon">🔗</span>
-      <span class="tb-label">Invite</span>
-    </button>
-    <div class="tb-sep"></div>
-    <button class="tb-btn" onclick="toggleLog()">
-      <span class="tb-icon">📋</span>
-      <span class="tb-label">Log</span>
-    </button>
+    <button onclick="startStream()">Start 60FPS Share</button>
+    <button onclick="copyInvite()">Copy Invite</button>
   </div>
-  <div class="log-popup" id="logPopup"></div>
 </div>
-
-<div class="toast" id="toast"></div>
-
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
+  const peer = new Peer('tradesync-host', { host: 'localhost', port: 9000, path: '/myapp' });
+  let currentStream;
 
-// ─── FPS ─────────────────────────────────────────────
-let frameCount = 0, lastFpsTime = performance.now();
-(function fpsLoop(){
-  frameCount++;
-  const now = performance.now();
-  if(now - lastFpsTime >= 1000){ document.getElementById('fpsBadge').textContent = frameCount+' FPS'; frameCount=0; lastFpsTime=now; }
-  requestAnimationFrame(fpsLoop);
-})();
+  async function startStream() {
+    currentStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 } });
+    document.getElementById('localVideo').srcObject = currentStream;
+    document.getElementById('localVideo').style.display = 'block';
+    document.getElementById('status').innerText = "LIVE";
+  }
 
-// ─── LiveKit Engine ──────────────────────────────────
-const LIVEKIT_URL = "ws://localhost:7880"; 
-let room = null;
-let meetingStartTime = null, meetingInterval = null;
-
-async function startSharing() {
-  try {
-    log("Connecting to LiveKit SFU...", "info");
-    const resp = await fetch('/getToken?identity=host-user');
-    const { token } = await resp.json();
-
-    room = new LiveKitClient.Room();
-    await room.connect(LIVEKIT_URL, token);
-    
-    document.getElementById('connDot').className = 'dot green';
-    document.getElementById('connLabel').innerText = 'SFU Connected';
-
-    // Enable Screen Share
-    await room.localParticipant.setScreenShareEnabled(true, {
-      videoCodec: 'vp8',
-      resolution: { width: 1920, height: 1080 },
-      frameRate: 60
-    });
-
-    const videoTrack = room.localParticipant.getTrack(LiveKitClient.Track.Source.ScreenShare);
-    if (videoTrack) {
-      const v = document.getElementById('localVideo');
-      videoTrack.track.attach(v);
-      v.style.display = 'block';
+  peer.on('call', call => {
+    if (currentStream) {
+      call.answer(currentStream);
     }
+  });
 
-    document.getElementById('idleScreen').style.display = 'none';
-    document.getElementById('shareBtn').style.display = 'none';
-    document.getElementById('stopBtn').style.display = 'flex';
-    document.getElementById('streamDot').className = 'dot green';
-    document.getElementById('streamLabel').innerText = 'LIVE';
-
-    meetingStartTime = Date.now();
-    startMeetingTimer();
-    log("60FPS Stream Active ✅", "ok");
-    showToast("Streaming via LiveKit SFU");
-
-  } catch (err) {
-    log("Share failed: " + err.message, "err");
+  function copyInvite() {
+    navigator.clipboard.writeText(window.location.origin + '/viewer.html');
+    alert("Invite Link Copied!");
   }
-}
-
-function stopSharing() {
-  if (room) {
-    room.disconnect();
-    room = null;
-  }
-  document.getElementById('localVideo').style.display = 'none';
-  document.getElementById('idleScreen').style.display = 'flex';
-  document.getElementById('shareBtn').style.display = 'flex';
-  document.getElementById('stopBtn').style.display = 'none';
-  document.getElementById('connDot').className = 'dot';
-  document.getElementById('connLabel').innerText = 'SFU Offline';
-  document.getElementById('streamDot').className = 'dot';
-  document.getElementById('streamLabel').innerText = 'Not sharing';
-  clearInterval(meetingInterval);
-  log("Stream stopped", "info");
-}
-
-// ─── Meeting UI ──────────────────────────────────────
-function startMeetingTimer(){
-  clearInterval(meetingInterval);
-  meetingInterval = setInterval(()=>{
-    const elapsed = Date.now() - meetingStartTime;
-    document.getElementById('meetingTimer').textContent = formatDuration(elapsed);
-  }, 1000);
-}
-function formatDuration(ms){
-  const s = Math.floor(ms/1000);
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
-  return [h,m,sec].map(v=>v.toString().padStart(2,'0')).join(':');
-}
-
-// ─── Drawing Sync (Socket.io) ────────────────────────
-const socket = io({transports:['websocket']});
-const canvas = document.getElementById('drawCanvas');
-const ctx = canvas.getContext('2d');
-function resizeCanvas(){ const a=document.getElementById('screenArea'); canvas.width=a.clientWidth; canvas.height=a.clientHeight; }
-resizeCanvas(); window.addEventListener('resize', resizeCanvas);
-
-socket.on('draw-event', (data) => {
-  const x0=data.x0*canvas.width, y0=data.y0*canvas.height;
-  const x1=data.x1*canvas.width, y1=data.y1*canvas.height;
-  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1);
-  ctx.strokeStyle = data.tool==='eraser'?'rgba(0,0,0,1)':data.color;
-  ctx.lineWidth = data.tool==='eraser'?data.size*4:data.size;
-  ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.globalCompositeOperation = data.tool==='eraser'?'destination-out':'source-over';
-  ctx.stroke();
-});
-socket.on('clear-canvas', () => ctx.clearRect(0,0,canvas.width,canvas.height));
-
-// ─── UI Helpers ──────────────────────────────────────
-function copyViewerLink(){ 
-  navigator.clipboard.writeText(`${window.location.origin}/viewer.html`);
-  showToast('Invite link copied!'); 
-}
-function toggleLog(){ document.getElementById('logPopup').classList.toggle('open'); }
-function log(m,t='info'){
-  const p=document.getElementById('logPopup');
-  p.innerHTML+=`<div class="log-line ${t}">[${new Date().toLocaleTimeString()}] ${m}</div>`;
-  p.scrollTop=p.scrollHeight;
-}
-function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 </script>
 </body>
 </html>
