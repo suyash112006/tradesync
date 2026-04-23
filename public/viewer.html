@@ -367,7 +367,7 @@ function createPeerConnection(){
   pc.onicecandidate=(e)=>{
     if(e.candidate) {
       console.log('[ICE] Generated local candidate');
-      socket.emit('ice-candidate',e.candidate); 
+      socket.emit('ice-candidate', { roomId, candidate: e.candidate }); 
     }
   };
   pc.onconnectionstatechange=()=>{
@@ -396,7 +396,7 @@ socket.on('offer',async(offer)=>{
     console.log('[DEBUG] Success: Answer created');
     await pc.setLocalDescription(ans);
     console.log('[DEBUG] Success: Local description (answer) set');
-    socket.emit('answer',ans);
+    socket.emit('answer', { roomId, answer: ans });
     console.log('[DEBUG] Success: Answer emitted to signaling server');
   } catch (e) {
     console.error('[DEBUG] Error during offer processing:', e);

@@ -69,28 +69,28 @@ io.on('connection', (socket) => {
     console.log(`Viewer registered for room: ${roomId}`);
   });
 
-  // Dedicated relay for signals within a room
   socket.on('offer', (data) => {
-    const room = rooms.get(currentRoomId);
+    const { roomId, offer } = data;
+    const room = rooms.get(roomId || currentRoomId);
     if (!room) return;
     const target = socket.id === room.hostId ? room.viewerId : room.hostId;
-    console.log(`[HANDSHAKE] Offer from ${currentRole} in room ${currentRoomId} -> Target: ${target ? 'Found' : 'Missing'}`);
-    if (target) io.to(target).emit('offer', data);
+    if (target) io.to(target).emit('offer', offer);
   });
 
   socket.on('answer', (data) => {
-    const room = rooms.get(currentRoomId);
+    const { roomId, answer } = data;
+    const room = rooms.get(roomId || currentRoomId);
     if (!room) return;
     const target = socket.id === room.hostId ? room.viewerId : room.hostId;
-    console.log(`[HANDSHAKE] Answer from ${currentRole} in room ${currentRoomId} -> Target: ${target ? 'Found' : 'Missing'}`);
-    if (target) io.to(target).emit('answer', data);
+    if (target) io.to(target).emit('answer', answer);
   });
 
   socket.on('ice-candidate', (data) => {
-    const room = rooms.get(currentRoomId);
+    const { roomId, candidate } = data;
+    const room = rooms.get(roomId || currentRoomId);
     if (!room) return;
     const target = socket.id === room.hostId ? room.viewerId : room.hostId;
-    if (target) io.to(target).emit('ice-candidate', data);
+    if (target) io.to(target).emit('ice-candidate', candidate);
   });
 
   socket.on('draw-event', (data) => {

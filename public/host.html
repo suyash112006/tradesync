@@ -399,7 +399,7 @@ function createPeerConnection(){
   pc.onicecandidate=({candidate})=>{
     if(candidate) {
       console.log('[ICE] Generated local candidate');
-      socket.emit('ice-candidate',candidate); 
+      socket.emit('ice-candidate', { roomId, candidate }); 
     }
   };
   pc.onconnectionstatechange=()=>{
@@ -430,7 +430,7 @@ async function initiateOffer(options = {}){
     console.log('[DEBUG] Success: Offer created');
     await pc.setLocalDescription(offer);
     console.log('[DEBUG] Success: Local description set');
-    socket.emit('offer',offer); 
+    socket.emit('offer', { roomId, offer }); 
     console.log('[DEBUG] Success: Offer emitted to signaling server');
     log(options.iceRestart ? 'Handshake: ICE Restart sent' : 'Handshake: Offer sent to viewer','info');
   } catch (e) {
