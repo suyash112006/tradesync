@@ -106,9 +106,10 @@ body{
 // ─── LiveKit Engine ──────────────────────────────────
 let room = null;
 let meetingStartTime = null, meetingInterval = null;
+
+// 🔥 PRO TIP: Update this to your Cloudflare URL for remote access
 const LIVEKIT_URL = "ws://localhost:7880"; 
 
-// 🔥 Universal Engine Detector
 function getEngine() {
     return window.LiveKit || window.LiveKitClient || window.LivekitClient;
 }
@@ -117,7 +118,7 @@ async function startSharing() {
   try {
     const LK = getEngine();
     if (!LK) {
-        log("❌ Engine not loaded. Trying emergency refresh...", "err");
+        log("❌ Engine not loaded. Refreshing...", "err");
         setTimeout(() => location.reload(), 1000);
         return;
     }
@@ -128,8 +129,16 @@ async function startSharing() {
     log("Step 2: Token Received. Connecting to SFU...", "ok");
 
     room = new LK.Room();
+    
+    // ✅ Connection Logic with Specific Error Handling
     const url = LIVEKIT_URL.includes('localhost') ? LIVEKIT_URL : LIVEKIT_URL.replace('ws://', 'wss://');
-    await room.connect(url, token);
+    
+    await room.connect(url, token).catch(e => {
+        if(e.message.includes("establish signal")){
+            throw new Error("LiveKit Server is OFFLINE. Run 'livekit-server --dev' in terminal.");
+        }
+        throw e;
+    });
     
     document.getElementById('connDot').className = 'dot green';
     document.getElementById('connLabel').innerText = 'SFU Connected';
@@ -155,10 +164,11 @@ async function startSharing() {
 
     meetingStartTime = Date.now();
     startMeetingTimer();
-    log("FINAL: Stream is LIVE on network! ✅", "ok");
+    log("FINAL: Stream is LIVE! ✅", "ok");
 
   } catch (err) {
     log("❌ ERROR: " + err.message, "err");
+    console.error(err);
   }
 }
 
@@ -210,12 +220,11 @@ function log(m,t='info'){
 }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2500); }
 
-// ─── Initial Check ────────────────────────────────────
 window.onload = () => {
     if (getEngine()) {
         log("✅ LiveKit Engine loaded successfully", "ok");
     } else {
-        log("⚠️ Engine not found on load. Waiting...", "info");
+        log("⚠️ Engine not found. Waiting for server...", "info");
     }
 };
 </script>
