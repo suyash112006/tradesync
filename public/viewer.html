@@ -2,62 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSync — Viewer</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
+  <title>TradeSync — Viewer (SFU)</title>
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    #remoteVideo { width: 80%; border-radius: 12px; border: 2px solid #00cfff; background: black; }
+    #video { width: 80%; border-radius: 12px; border: 2px solid #00cfff; background: black; }
     #status { margin-top: 10px; color: #717c8d; font-family: monospace; }
   </style>
 </head>
 <body>
-  <h1>TradeSync Viewer (PeerJS)</h1>
-  <video id="remoteVideo" autoplay playsinline></video>
-  <div id="status">Connecting to host...</div>
-  <button id="callBtn" onclick="tryCall()" style="margin-top: 20px; padding: 10px 20px; background: #00cfff; border: none; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; display: none;">Join Stream</button>
+  <h1>TradeSync Viewer (Mediasoup)</h1>
+  <video id="video" autoplay playsinline></video>
+  <div id="status">Waiting for host stream...</div>
 
-  <script>
-    const socket = io();
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('room') || 'DEFAULT_ROOM';
-    
-    const peer = new Peer();
-    let streamReceived = false;
-    let hostPeerId = null;
-
-    function tryCall() {
-      if (streamReceived || !hostPeerId) return;
-      console.log('[PEER] Calling host:', hostPeerId);
-      const call = peer.call(hostPeerId, new MediaStream());
-      
-      call.on('stream', (remoteStream) => {
-        console.log('[PEER] Stream received! ✅');
-        streamReceived = true;
-        document.getElementById('remoteVideo').srcObject = remoteStream;
-        document.getElementById('status').innerText = 'Streaming Live';
-        document.getElementById('callBtn').style.display = 'none';
-      });
-    }
-
-    socket.emit('join-room', roomId);
-    socket.on('host-online', ({ peerId }) => {
-      console.log('[SIGNAL] Host is online:', peerId);
-      hostPeerId = peerId;
-      tryCall();
-    });
-
-    peer.on('open', (id) => {
-      console.log('[PEER] My ID:', id);
-      tryCall();
-    });
-
-    setInterval(() => {
-      if (!streamReceived && hostPeerId) tryCall();
-    }, 5000);
-  </script>
-
-
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="viewer.js"></script>
 </body>
 </html>

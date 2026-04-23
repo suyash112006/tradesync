@@ -1,42 +1,90 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const mediasoup = require("mediasoup");
+const path = require("path");
 
 const app = express();
-const httpServer = http.createServer(app);
-const io = new Server(httpServer);
+app.use(express.static("public"));
 
+const server = http.createServer(app);
+const io = new Server(server);
 
-app.use(express.static('public'));
+let worker, router;
+let producer;
 
-let rooms = new Map(); // roomId -> hostSocketId
-
-io.on('connection', (socket) => {
-  socket.on('register-host', ({ roomId, peerId }) => {
-    socket.join(roomId);
-    rooms.set(roomId, { hostId: socket.id, peerId });
-    socket.to(roomId).emit('host-online', { peerId });
-    console.log(`[SIGNAL] Host online in ${roomId}: ${peerId}`);
+(async () => {
+  worker = await mediasoup.createWorker({
+    logLevel: 'warn',
+    rtcMinPort: 2000,
+    rtcMaxPort: 3000,
   });
 
-  socket.on('join-room', (roomId) => {
-    socket.join(roomId);
-    const room = rooms.get(roomId);
-    if (room) {
-      socket.emit('host-online', { peerId: room.peerId });
-    }
+  router = await worker.createRouter({
+    mediaCodecs: [
+      {
+        kind: "video",
+        mimeType: "video/VP8",
+        clockRate: 90000,
+        parameters: { 'x-google-start-bitrate': 1000 }
+      }
+    ]
   });
 
-  socket.on('disconnect', () => {
-    rooms.forEach((val, key) => {
-      if (val.hostId === socket.id) rooms.delete(key);
+  console.log("🔥 Mediasoup SFU Ready");
+})();
+
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+
+  socket.on("getRtpCapabilities", (cb) => {
+    cb(router.rtpCapabilities);
+  });
+
+  socket.on("createTransport", async (cb) => {
+    const transport = await router.createWebRtcTransport({
+      listenIps: [{ ip: "0.0.0.0", announcedIp: null }],
+      enableUdp: true,
+      enableTcp: true,
+      preferUdp: true
+    });
+
+    cb({
+      id: transport.id,
+      iceParameters: transport.iceParameters,
+      iceCandidates: transport.iceCandidates,
+      dtlsParameters: transport.dtlsParameters
+    });
+
+    socket.transport = transport;
+  });
+
+  socket.on("connectTransport", async ({ dtlsParameters }) => {
+    if (socket.transport) await socket.transport.connect({ dtlsParameters });
+  });
+
+  socket.on("produce", async ({ kind, rtpParameters }, cb) => {
+    producer = await socket.transport.produce({ kind, rtpParameters });
+    socket.broadcast.emit("new-producer"); // Notify viewers
+    cb({ id: producer.id });
+  });
+
+  socket.on("consume", async ({ rtpCapabilities }, cb) => {
+    if (!producer) return cb({ error: "No producer" });
+
+    const consumer = await socket.transport.consume({
+      producerId: producer.id,
+      rtpCapabilities,
+      paused: false
+    });
+
+    cb({
+      id: consumer.id,
+      producerId: producer.id,
+      kind: consumer.kind,
+      rtpParameters: consumer.rtpParameters
     });
   });
 });
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-  console.log(`TradeSync Server running on http://localhost:${PORT}`);
-});
-
+server.listen(3000, () => console.log("TradeSync SFU running on http://localhost:3000"));

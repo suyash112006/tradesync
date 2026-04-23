@@ -2,51 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSync — Host</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
+  <title>TradeSync — Host (SFU)</title>
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    #localVideo { width: 80%; border-radius: 12px; border: 2px solid #00e5a0; background: black; }
-    button { padding: 12px 24px; background: #00e5a0; border: none; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; margin-top: 20px; }
+    #video { width: 80%; border-radius: 12px; border: 2px solid #00e5a0; background: black; }
+    button { padding: 12px 24px; background: #00e5a0; border: none; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 18px; }
   </style>
 </head>
 <body>
-  <h1>TradeSync Host (PeerJS)</h1>
-  <video id="localVideo" autoplay playsinline muted></video>
-  <button id="shareBtn" onclick="startSharing()">Start Screen Share</button>
+  <h1>TradeSync Host (Mediasoup)</h1>
+  <video id="video" autoplay playsinline muted></video>
+  <button onclick="startSharing()">Start Screen Share</button>
 
-  <script>
-    const socket = io();
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('room') || 'DEFAULT_ROOM';
-    
-    // 🔥 Fresh Unique ID per session to avoid collisions
-    const peer = new Peer();
-
-    let localStream;
-
-    peer.on('open', (id) => {
-      console.log('[PEER] Host ID registered:', id);
-      socket.emit('register-host', { roomId, peerId: id });
-    });
-
-    async function startSharing() {
-      localStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 30 } }
-      });
-      document.getElementById('localVideo').srcObject = localStream;
-      document.getElementById('shareBtn').style.display = 'none';
-    }
-
-    peer.on('call', (call) => {
-      console.log('[PEER] Answering incoming call... ✅');
-      if (localStream) {
-        call.answer(localStream);
-      }
-    });
-  </script>
-
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="host.js"></script>
 </body>
 </html>
