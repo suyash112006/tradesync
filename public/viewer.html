@@ -334,12 +334,18 @@ function createPeerConnection(){
 
   pc.ontrack=(e)=>{
     console.log("TRACK RECEIVED ✅", e);
-    const stream = e.streams[0];
-    if(!stream) return;
-    video.srcObject = stream;
+    
+    // 🔥 Safe Attach: Create a clean stream for this specific track
+    const isolatedStream = new MediaStream([e.track]);
+    video.srcObject = isolatedStream;
+
     video.style.display = "block";
     canvas.style.display = "block"; 
     idleState.style.display = "none";
+    
+    video.onplaying = () => console.log("VIDEO PLAYING ✅");
+    video.onwaiting = () => console.log("VIDEO WAITING (Buffering)...");
+
     video.onloadedmetadata = () => {
       console.log("METADATA LOADED ✅");
       video.play().then(() => {
@@ -348,6 +354,7 @@ function createPeerConnection(){
         document.getElementById('tapToStart').classList.add('visible');
       });
     };
+
     resizeCanvas(); 
     setStatus('live');
   };
@@ -492,6 +499,20 @@ function manualPlay(){
     }).catch(e=>console.log("Still blocked:", e));
   }
 }
+
+// 🚀 Media Pipeline Monitor
+setInterval(() => {
+  if (video.srcObject) {
+    const track = video.srcObject.getVideoTracks()[0];
+    if (track) {
+      console.log("TRACK STATE:", {
+        readyState: track.readyState,
+        enabled: track.enabled,
+        muted: track.muted
+      });
+    }
+  }
+}, 5000);
 
 // 🚀 Repair Watchdog (Production Level)
 setInterval(() => {

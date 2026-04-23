@@ -281,7 +281,7 @@ socket.on('viewer-joined', (data)=>{
   }
 });
 
-socket.on('peer-disconnected', (data)=>{ 
+socket.on('viewer-disconnected', (data)=>{ 
   const vid = data.viewerId;
   if(pcs[vid]) { pcs[vid].close(); delete pcs[vid]; }
   viewerIds.delete(vid);
@@ -355,12 +355,32 @@ async function startSharing(isSwitch = false){
            pc.addTrack(t, localStream);
          }
        });
+       initiateOffer(vid);
     });
 
 
     newStream.getVideoTracks()[0].onended = () => stopSharing();
+    
+    // 🚀 Sender Monitor
+    setInterval(() => {
+      if (localStream) {
+        const t = localStream.getVideoTracks()[0];
+        console.log("SENDER TRACK:", {
+          readyState: t.readyState,
+          enabled: t.enabled,
+          muted: t.muted
+        });
+      }
+    }, 5000);
+
     meetingStartTime = Date.now();
+
     startMeetingTimer();
+    socket.emit('session-start', meetingStartTime);
+    clearInterval(meetingSyncInterval);
+    meetingSyncInterval = setInterval(() => {
+      if (meetingStartTime) socket.emit('session-start', meetingStartTime);
+    }, 10000);
     log('Sharing started ✅','ok');
   }catch(e){ log('Share failed','err'); console.error(e); }
 }

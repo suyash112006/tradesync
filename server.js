@@ -52,7 +52,7 @@ app.get('/api/ice', (req, res) => {
 
 
 
-// Room structure: roomId -> { hostId, viewerId }
+// Room structure: roomId -> { hostId, viewers, startTime }
 const rooms = new Map();
 
 io.on('connection', (socket) => {
@@ -132,8 +132,11 @@ io.on('connection', (socket) => {
   socket.on('draw-event', (data) => {
     const room = rooms.get(currentRoomId);
     if (!room) return;
-    const target = socket.id === room.hostId ? room.viewerId : room.hostId;
-    if (target) io.to(target).emit('draw-event', data);
+    if (socket.id === room.hostId) {
+      room.viewers.forEach((viewerId) => io.to(viewerId).emit('draw-event', data));
+    } else if (room.hostId) {
+      io.to(room.hostId).emit('draw-event', data);
+    }
   });
 
   socket.on('clear-canvas', () => {
@@ -160,12 +163,13 @@ io.on('connection', (socket) => {
     if (currentRoomId && rooms.has(currentRoomId)) {
       const room = rooms.get(currentRoomId);
       if (currentRole === 'host' && room.hostId === socket.id) {
-        if (room.viewerId) io.to(room.viewerId).emit('host-offline');
+        room.viewers.forEach((viewerId) => io.to(viewerId).emit('host-offline'));
         rooms.delete(currentRoomId); 
         console.log(`[ROOM] Closed room ${currentRoomId} because host left.`);
-      } else if (currentRole === 'viewer' && room.viewerId === socket.id) {
-        room.viewerId = null;
-        if (room.hostId) io.to(room.hostId).emit('viewer-disconnected');
+      } else if (currentRole === 'viewer') {
+        room.viewers.delete(socket.id);
+        if (room.hostId) io.to(room.hostId).emit('viewer-disconnected', { viewerId: socket.id });
+        if (!room.hostId && room.viewers.size === 0) rooms.delete(currentRoomId);
       }
     }
     console.log('Disconnected:', socket.id);
