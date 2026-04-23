@@ -101,8 +101,13 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomId);
     if (room.hostId) {
       if (room.startTime) socket.emit('session-start', room.startTime);
+      // 🔥 Shout once, then re-shout 1s later for safety
       io.to(room.hostId).emit('viewer-joined', { viewerId: socket.id });
+      setTimeout(() => {
+        io.to(room.hostId).emit('viewer-joined', { viewerId: socket.id });
+      }, 1000);
     }
+
 
     console.log(`Viewer registered for room: ${roomId}`);
   });

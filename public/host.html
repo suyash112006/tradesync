@@ -277,11 +277,15 @@ socket.on('connect', ()=>{
 });
 socket.on('viewer-joined', (data)=>{
   const vid = data.viewerId;
-  if (!vid || pcs[vid]) return; // 🔥 Barrier: Do not recreate existing connections
+  if (!vid) return;
   
+  // 🔥 Only skip if connection is ALREADY established and live
+  if (pcs[vid] && (pcs[vid].connectionState === 'connected' || pcs[vid].connectionState === 'connecting')) return;
+
   viewerIds.add(vid);
   setConn(true); 
   log('New viewer joined!','ok');
+
   
   if(localStream){ 
     console.log(`[DEBUG] Initializing one-shot handshake for ${vid}`);
