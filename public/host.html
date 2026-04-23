@@ -255,7 +255,7 @@ if (!roomId) {
   window.history.replaceState({}, '', `${window.location.pathname}?room=${roomId}`);
 }
 
-let pc=null, localStream=null, drawFadeTimer=null, viewerReady=false;
+let pcs={}, localStream=null, drawFadeTimer=null, viewerIds=new Set();
 let meetingStartTime = null, meetingInterval = null, meetingSyncInterval = null;
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
@@ -268,34 +268,42 @@ socket.on('connect', ()=>{
   log(`Connected (Room: ${roomId})`, 'ok'); 
   socket.emit('register-host', roomId); 
 });
-socket.on('viewer-joined', ()=>{
-  viewerReady = true; 
+socket.on('viewer-joined', (data)=>{
+  const vid = data.viewerId;
+  viewerIds.add(vid);
   setConn(true); 
-  log('Viewer joined! Ready to share.','ok');
+  log('New viewer joined!','ok');
   
   if(localStream){ 
-    console.log('[DEBUG] Stream exists, initiating connection...');
-    createPeerConnection();
-    initiateOffer(); 
-  } else {
-    console.log('[DEBUG] Viewer waiting for host to share screen.');
+    console.log(`[DEBUG] Stream exists, creating connection for ${vid}`);
+    createPeerConnection(vid);
+    initiateOffer(vid); 
   }
 });
 
-socket.on('peer-disconnected', ()=>{ setConn(false); log('Viewer disconnected','err'); });
-socket.on('answer', async(a)=>{ if(pc){ await pc.setRemoteDescription(new RTCSessionDescription(a)); log('WebRTC connected ✓','ok'); } });
-socket.on('offer', async(offer)=>{
-  if(!pc) createPeerConnection();
-  await pc.setRemoteDescription(new RTCSessionDescription(offer));
-  const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
-  socket.emit('answer', ans);
+socket.on('peer-disconnected', (data)=>{ 
+  const vid = data.viewerId;
+  if(pcs[vid]) { pcs[vid].close(); delete pcs[vid]; }
+  viewerIds.delete(vid);
+  if(viewerIds.size === 0) setConn(false);
+  log('Viewer left','err'); 
 });
-socket.on('ice-candidate',async(c)=>{ 
-  console.log('[ICE] Received remote candidate');
+
+socket.on('answer', async(data)=>{ 
+  const pc = pcs[data.from];
   if(pc){ 
-    try{ await pc.addIceCandidate(new RTCIceCandidate(c)); }catch(e){ console.error('[ICE] Error adding candidate', e); } 
+    await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); 
+    log('Viewer connected ✓','ok'); 
   } 
 });
+
+socket.on('ice-candidate',async(data)=>{ 
+  const pc = pcs[data.from];
+  if(pc){ 
+    try{ await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }catch(e){} 
+  } 
+});
+
 
 // ─── Drawing ──────────────────────────────────────────
 socket.on('draw-event', (data)=>{
@@ -323,7 +331,7 @@ async function startSharing(isSwitch = false){
     log(isSwitch ? 'Switching screen source...' : 'Requesting screen capture...','info');
     
     const newStream = await navigator.mediaDevices.getDisplayMedia({ 
-      video: { frameRate: 30, cursor: 'always' }, 
+      video: { frameRate: 60, cursor: 'always' }, 
       audio: false 
     });
     
@@ -335,12 +343,11 @@ async function startSharing(isSwitch = false){
     document.getElementById('switchBtn').style.display='flex';
     document.getElementById('stopBtn').style.display='flex';
 
-    // 🔥 Trigger connection ONLY after stream is ready
-    if (viewerReady) {
-       console.log('[DEBUG] Viewer is waiting, creating PC now...');
-       createPeerConnection(); 
-       await initiateOffer();
-    }
+    // 🔥 Trigger connection for all waiting viewers
+    viewerIds.forEach(vid => {
+       createPeerConnection(vid); 
+       initiateOffer(vid);
+    });
 
     newStream.getVideoTracks()[0].onended = () => stopSharing();
     meetingStartTime = Date.now();
@@ -369,7 +376,8 @@ function formatDuration(ms){
 
 function stopSharing(){
   if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
-  if(pc){ pc.close(); pc=null; }
+  Object.values(pcs).forEach(pc => pc.close());
+  pcs = {};
   const v=document.getElementById('localVideo'); v.style.display='none'; v.srcObject=null;
   document.getElementById('idleScreen').style.display='flex';
   document.getElementById('diagBox').classList.remove('visible');
@@ -388,52 +396,52 @@ function stopSharing(){
   log('Sharing stopped','info');
 }
 
-function createPeerConnection(){
-  if(pc) { pc.close(); pc = null; }
-  pc = new RTCPeerConnection({...ICE_CONFIG, sdpSemantics: 'unified-plan'});
+function createPeerConnection(vid){
+  if(pcs[vid]) { pcs[vid].close(); delete pcs[vid]; }
   
+  const pc = new RTCPeerConnection({...ICE_CONFIG, sdpSemantics: 'unified-plan'});
+  pcs[vid] = pc;
+
   if(localStream) {
-    console.log('[DEBUG] Adding tracks to PeerConnection');
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    localStream.getTracks().forEach(t => {
+      const sender = pc.addTrack(t, localStream);
+      if(t.kind === 'video'){
+        setTimeout(() => {
+          try {
+            const params = sender.getParameters();
+            if(!params.encodings) params.encodings = [{}];
+            params.encodings[0].maxBitrate = 1500000;
+            params.encodings[0].maxFramerate = 60;
+            params.degradationPreference = "maintain-framerate";
+            sender.setParameters(params);
+          } catch(e) {}
+        }, 1000);
+      }
+    });
   }
 
   pc.onicecandidate=({candidate})=>{
-    if(candidate) {
-      socket.emit('ice-candidate', { roomId, candidate }); 
-    }
+    if(candidate) socket.emit('ice-candidate', { roomId, target: vid, candidate }); 
   };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
-    console.log("STATE:", s); 
-    const el = document.getElementById('diagPeer');
-    el.textContent = s;
-    el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
-    log('WebRTC Connection: '+s,'info');
-  };
-  pc.onicegatheringstatechange=()=>{
-    console.log('[WEBRTC] ICE Gathering State:', pc.iceGatheringState);
-  };
-  pc.oniceconnectionstatechange=()=>{
-    const s = pc.iceConnectionState;
-    const el = document.getElementById('diagIce');
-    el.textContent = s;
-    el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
+    console.log(`STATE (${vid}):`, s); 
+    if(s === 'failed') {
+      setTimeout(() => { if(pcs[vid]) { createPeerConnection(vid); initiateOffer(vid); } }, 2000);
+    }
   };
 }
 
-
-async function initiateOffer(options = {}){
+async function initiateOffer(vid, options = {}){
+  const pc = pcs[vid];
   if(!pc) return;
   try {
     const offer = await pc.createOffer({ ...options, offerToReceiveVideo: true }); 
     await pc.setLocalDescription(offer);
-    socket.emit('offer', { roomId, offer }); 
-    log(options.iceRestart ? 'Handshake: ICE Restart sent' : 'Handshake: Offer sent','info');
-  } catch (e) {
-    console.error('[DEBUG] Error during initiateOffer:', e);
-    log('Handshake failed: ' + e.message, 'err');
-  }
+    socket.emit('offer', { roomId, target: vid, offer }); 
+  } catch (e) { console.error('Offer failed', e); }
 }
+
 
 
 // NUCLEAR: Auto-repair pulse every 15 seconds

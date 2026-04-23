@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
     currentRole = 'host';
     
     if (!rooms.has(roomId)) {
-      rooms.set(roomId, { hostId: socket.id, viewerId: null, startTime: null });
+      rooms.set(roomId, { hostId: socket.id, viewers: new Set(), startTime: null });
     } else {
       const room = rooms.get(roomId);
       room.hostId = socket.id;
@@ -76,9 +76,9 @@ io.on('connection', (socket) => {
     socket.emit('role-confirmed', 'host');
     
     const room = rooms.get(roomId);
-    if (room.viewerId) {
-      io.to(room.viewerId).emit('host-online');
-      socket.emit('viewer-joined');
+    if (room.viewers.size > 0) {
+      room.viewers.forEach(vid => io.to(vid).emit('host-online'));
+      room.viewers.forEach(vid => socket.emit('viewer-joined', { viewerId: vid }));
     }
     console.log(`Host registered for room: ${roomId}`);
   });
@@ -89,10 +89,10 @@ io.on('connection', (socket) => {
     currentRole = 'viewer';
     
     if (!rooms.has(roomId)) {
-      rooms.set(roomId, { hostId: null, viewerId: socket.id, startTime: null });
+      rooms.set(roomId, { hostId: null, viewers: new Set([socket.id]), startTime: null });
     } else {
       const room = rooms.get(roomId);
-      room.viewerId = socket.id;
+      room.viewers.add(socket.id);
     }
     
     socket.join(roomId);
@@ -102,34 +102,32 @@ io.on('connection', (socket) => {
     if (room.hostId) {
       socket.emit('host-online');
       if (room.startTime) socket.emit('session-start', room.startTime);
-      io.to(room.hostId).emit('viewer-joined');
+      io.to(room.hostId).emit('viewer-joined', { viewerId: socket.id });
     }
     console.log(`Viewer registered for room: ${roomId}`);
   });
 
   socket.on('offer', (data) => {
-    const { roomId, offer } = data;
-    const room = rooms.get(roomId || currentRoomId);
-    if (!room) return;
-    const target = socket.id === room.hostId ? room.viewerId : room.hostId;
-    if (target) io.to(target).emit('offer', offer);
+    // data: { roomId, target, offer }
+    if (data.target) {
+      io.to(data.target).emit('offer', { offer: data.offer, from: socket.id });
+    }
   });
 
   socket.on('answer', (data) => {
-    const { roomId, answer } = data;
-    const room = rooms.get(roomId || currentRoomId);
-    if (!room) return;
-    const target = socket.id === room.hostId ? room.viewerId : room.hostId;
-    if (target) io.to(target).emit('answer', answer);
+    // data: { roomId, target, answer }
+    if (data.target) {
+      io.to(data.target).emit('answer', { answer: data.answer, from: socket.id });
+    }
   });
 
   socket.on('ice-candidate', (data) => {
-    const { roomId, candidate } = data;
-    const room = rooms.get(roomId || currentRoomId);
-    if (!room) return;
-    const target = socket.id === room.hostId ? room.viewerId : room.hostId;
-    if (target) io.to(target).emit('ice-candidate', candidate);
+    // data: { roomId, target, candidate }
+    if (data.target) {
+      io.to(data.target).emit('ice-candidate', { candidate: data.candidate, from: socket.id });
+    }
   });
+
 
   socket.on('draw-event', (data) => {
     const room = rooms.get(currentRoomId);

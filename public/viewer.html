@@ -238,20 +238,21 @@ if (!roomId) {
   alert('Error: Room ID is missing. Please use a valid invite link.');
 }
 
+let pc=null, hostId=null;
 const video=document.getElementById('remoteVideo');
 const canvas=document.getElementById('drawCanvas');
 const ctx=canvas.getContext('2d');
 const idleState=document.getElementById('idleState');
 const drawingBadge=document.getElementById('drawingBadge');
 
-let pc=null, drawing=false, lastX=0, lastY=0;
+let drawing=false, lastX=0, lastY=0;
 let currentColor='#00cfff', currentSize=4, currentTool='pen';
-let drawBadgeTimeout=null, watchdogInterval=null;
+let drawBadgeTimeout=null;
 let isAttaching = false; 
 let lastEmitTime=0, lastEmittedX=0, lastEmittedY=0;
 const EMIT_INTERVAL=16;
 let meetingStartTime = null, meetingInterval = null;
-let audioCtx=null, analyser=null, localAudioStream=null, isVoiceJoined=false;
+
 
 // ─── Status ───────────────────────────────────────────
 function setStatus(s){
@@ -278,6 +279,12 @@ socket.on('session-start', (timestamp)=>{
     startMeetingTimer();
   }
 });
+
+socket.on('host-online', () => {
+  log('Host is online, waiting for stream...','ok');
+  if(!pc) socket.emit('register-viewer', roomId);
+});
+
 
 function resetViewerState(reason='Meeting terminated'){
   isAttaching = false; 
@@ -321,55 +328,36 @@ function createPeerConnection(){
   if(pc) return;
   pc=new RTCPeerConnection({...ICE_CONFIG, sdpSemantics: 'unified-plan'});
   pc.ontrack=(e)=>{
-    console.log("TRACK RECEIVED", e); 
     const stream = e.streams[0];
     if(!stream) return;
-
     video.srcObject = stream;
     video.style.display = "block";
     canvas.style.display = "block"; 
     idleState.style.display = "none";
-
     video.onloadedmetadata = () => {
-      console.log("METADATA LOADED ✅");
       video.play().then(() => {
-        console.log("VIDEO PLAYING ✅");
         document.getElementById('tapToStart').classList.remove('visible');
       }).catch(err => {
-        console.log("PLAY ERROR:", err);
         document.getElementById('tapToStart').classList.add('visible');
       });
     };
-
-    // Safety fallback for readyState
-    setTimeout(() => {
-      if (video.readyState === 0) {
-        console.log("FORCE RE-ATTACH");
-        video.srcObject = null;
-        video.srcObject = stream;
-      }
-      console.log("Video readyState:", video.readyState);
-    }, 1500);
-
     resizeCanvas(); 
     setStatus('live');
   };
-
-
-
-
-
   pc.onicecandidate=(e)=>{
-    if(e.candidate) {
-      socket.emit('ice-candidate', { roomId, candidate: e.candidate }); 
+    if(e.candidate && hostId) {
+      socket.emit('ice-candidate', { roomId, target: hostId, candidate: e.candidate }); 
     }
   };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
-    console.log("STATE:", s); // EXACT LOG AS REQUESTED
-    const el = document.getElementById('diagPeer');
-    el.textContent = s;
-    el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
+    if(s === 'failed' || s === 'disconnected') {
+      console.log('[RECONNECT] Connection dropped, re-joining...');
+      setTimeout(() => { 
+        if(pc) { pc.close(); pc=null; }
+        socket.emit('register-viewer', roomId);
+      }, 1500);
+    }
   };
 
   pc.oniceconnectionstatechange=()=>{
@@ -380,25 +368,26 @@ function createPeerConnection(){
   };
 }
 
-socket.on('offer',async(offer)=>{
+socket.on('offer', async(data)=>{
+  hostId = data.from;
   if(!pc) createPeerConnection();
   try {
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
     const ans = await pc.createAnswer(); 
     await pc.setLocalDescription(ans);
-    socket.emit('answer', { roomId, answer: ans });
-  } catch (e) {
-    console.error(e);
-  }
+    socket.emit('answer', { roomId, target: hostId, answer: ans });
+  } catch (e) { console.error('Offer error', e); }
 });
+
 socket.on('answer',async(a)=>{ 
   if(pc) {
     await pc.setRemoteDescription(new RTCSessionDescription(a)); 
   }
 });
-socket.on('ice-candidate',async(cand)=>{
+
+socket.on('ice-candidate',async(data)=>{
   if(pc) {
-    try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) {}
+    try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch(e){}
   }
 });
 
@@ -494,8 +483,13 @@ function manualPlay(){
   }
 }
 
-// Global click listener for easier start
-document.addEventListener("click", () => { manualPlay(); }, { once: true });
+// 🚀 Repair Watchdog (Production Level)
+setInterval(() => {
+  if (video.srcObject && (video.readyState < 2 || video.paused)) {
+    console.log("[WATCHDOG] Stream stalled, repairing...");
+    video.play().catch(() => {});
+  }
+}, 3000);
 
 
 function forceRepair(){
