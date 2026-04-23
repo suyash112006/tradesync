@@ -23,7 +23,18 @@
   </div>
 
   <script>
-    const peer = new Peer();
+    const peer = new Peer({
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          {
+            urls: "turn:openrelay.metered.ca:80?transport=udp",
+            username: "openrelayproject",
+            credential: "openrelayproject"
+          }
+        ]
+      }
+    });
     let currentStream;
 
     peer.on('open', id => {
@@ -51,9 +62,10 @@
         alert("Viewer is calling, but you haven't started screen sharing yet!");
         return;
       }
-      console.log("Answering call from viewer...");
+      console.log("[PEER] Answering call... Sending 60FPS stream ✅");
       call.answer(currentStream);
     });
+
   </script>
 </body>
 </html>

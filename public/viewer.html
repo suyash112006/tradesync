@@ -16,7 +16,8 @@
 </head>
 <body>
   <h1>TradeSync Viewer</h1>
-  <video id="video" autoplay playsinline></video>
+  <video id="video" autoplay playsinline muted></video>
+
   
   <div class="controls">
     <input id="hostId" placeholder="Enter Host ID here...">
@@ -25,7 +26,18 @@
   <div id="status">Ready to connect...</div>
 
   <script>
-    const peer = new Peer();
+    const peer = new Peer({
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          {
+            urls: "turn:openrelay.metered.ca:80?transport=udp",
+            username: "openrelayproject",
+            credential: "openrelayproject"
+          }
+        ]
+      }
+    });
 
     peer.on('open', id => {
       console.log("VIEWER ID:", id);
@@ -38,17 +50,19 @@
         return;
       }
 
-      document.getElementById("status").innerText = "Calling host...";
-      // We send a null stream because we only want to RECEIVE
+      document.getElementById("status").innerText = "Connecting to Host...";
+      // 🔥 One-way call to avoid PeerJS sync issues
       const call = peer.call(hostId, new MediaStream());
 
       call.on('stream', stream => {
         console.log("Stream received! ✅");
         const video = document.getElementById("video");
         video.srcObject = stream;
+        video.play().catch(e => console.warn("Autoplay blocked, click anywhere to play."));
         document.getElementById("status").innerText = "Streaming LIVE";
         document.querySelector(".controls").style.display = "none";
       });
+
 
       call.on('error', err => {
         console.error("Call error:", err);
