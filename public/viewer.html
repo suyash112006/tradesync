@@ -333,7 +333,7 @@ function createPeerConnection(){
   pc.addTransceiver("video", { direction: "recvonly" });
 
   pc.ontrack=(e)=>{
-
+    console.log("TRACK RECEIVED ✅", e);
     const stream = e.streams[0];
     if(!stream) return;
     video.srcObject = stream;
@@ -341,6 +341,7 @@ function createPeerConnection(){
     canvas.style.display = "block"; 
     idleState.style.display = "none";
     video.onloadedmetadata = () => {
+      console.log("METADATA LOADED ✅");
       video.play().then(() => {
         document.getElementById('tapToStart').classList.remove('visible');
       }).catch(err => {
@@ -375,6 +376,7 @@ function createPeerConnection(){
 }
 
 socket.on('offer', async(data)=>{
+  console.log("OFFER RECEIVED ✅", data);
   hostId = data.from;
   if(!pc) createPeerConnection();
   try {
@@ -382,6 +384,7 @@ socket.on('offer', async(data)=>{
     const ans = await pc.createAnswer(); 
     await pc.setLocalDescription(ans);
     socket.emit('answer', { roomId, target: hostId, answer: ans });
+    console.log("ANSWER SENT ✅");
   } catch (e) { console.error('Offer error', e); }
 });
 
@@ -396,6 +399,7 @@ socket.on('ice-candidate',async(data)=>{
     try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch(e){}
   }
 });
+
 
 // ─── Canvas ───────────────────────────────────────────
 function resizeCanvas() { const r = canvas.parentElement.getBoundingClientRect(); canvas.width = r.width; canvas.height = r.height; }
