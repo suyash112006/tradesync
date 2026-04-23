@@ -2,22 +2,11 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const Turn = require('node-turn');
 
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
-
-// ─── Internal TURN Server ────────────────────────────
-const turnServer = new Turn({
-  authMech: 'long-term',
-  credentials: {
-    "tradesync": "tradesync_secure_2024"
-  }
-});
-turnServer.start();
-console.log('[TURN] Internal relay started on port 3478');
 
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -26,6 +15,35 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.ht
 app.get('/lobby', (req, res) => res.sendFile(path.join(__dirname, 'public', 'lobby.html')));
 app.get('/host', (req, res) => res.sendFile(path.join(__dirname, 'public', 'host.html')));
 app.get('/viewer', (req, res) => res.sendFile(path.join(__dirname, 'public', 'viewer.html')));
+
+// ─── ICE / TURN Config Endpoint ───────────────────────
+// Serves reliable free TURN servers over TCP port 443 (works on Render)
+app.get('/api/ice', (req, res) => {
+  res.json({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      {
+        urls: [
+          'turn:openrelay.metered.ca:443?transport=tcp',
+          'turns:openrelay.metered.ca:443'
+        ],
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: [
+          'turn:freeturn.net:3478',
+          'turn:freeturn.net:5349',
+          'turns:freeturn.net:5349'
+        ],
+        username: 'free',
+        credential: 'free'
+      }
+    ]
+  });
+});
+
 
 // Room structure: roomId -> { hostId, viewerId }
 const rooms = new Map();

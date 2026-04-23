@@ -222,19 +222,18 @@ let frameCount = 0, lastFpsTime = performance.now();
 })();
 
 // ─── ICE Config ───────────────────────────────────────
-const ICE_CONFIG = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun.metered.ca:80' },
-    { urls: 'turn:tradesync-xwzh.onrender.com:3478', username: 'tradesync', credential: 'tradesync_secure_2024' },
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turns:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-  ],
-  iceCandidatePoolSize: 10,
-  bundlePolicy: 'max-bundle'
-};
+// ─── ICE Config (Smart Fetch) ────────────────────────
+let ICE_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+fetch('/api/ice')
+  .then(r => r.json())
+  .then(cfg => { 
+    ICE_CONFIG = cfg; 
+    ICE_CONFIG.iceCandidatePoolSize = 10;
+    ICE_CONFIG.bundlePolicy = 'max-bundle';
+    console.log('[ICE] Smart Config Loaded'); 
+  })
+  .catch(() => console.warn('[ICE] Using fallback STUN'));
+
 
 const socket = io({transports:['websocket']});
 socket.on('connect', () => {
