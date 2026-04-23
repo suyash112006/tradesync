@@ -2,74 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSync — Viewer (Hardened)</title>
-  <script src="/peerjs.min.js"></script>
+  <title>TradeSync — Viewer (LiveKit)</title>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-    #video { width: 100%; height: 100%; object-fit: contain; background: black; }
+    #remoteVideo { width: 100%; height: 100%; object-fit: contain; background: black; }
     #status { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px; color: #00cfff; font-family: monospace; font-size: 12px; pointer-events: none; }
   </style>
 </head>
 <body>
-  <video id="video" autoplay playsinline muted></video>
-  <div id="status">Initializing engine...</div>
+  <div id="videoContainer" style="width:100%; height:100%;">
+    <!-- Video element will be attached here by LiveKit -->
+  </div>
+  <div id="status">Connecting to SFU...</div>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const hostId = urlParams.get('id');
+    // 🔥 UPDATE THIS with your Cloudflare LiveKit Tunnel URL
+    const LIVEKIT_URL = "ws://localhost:7880";
 
-    const peer = new Peer({
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          {
-            urls: [
-              "turn:openrelay.metered.ca:80?transport=udp",
-              "turn:openrelay.metered.ca:80?transport=tcp",
-              "turn:openrelay.metered.ca:443?transport=tcp",
-              "turns:openrelay.metered.ca:443?transport=tcp"
-            ],
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          }
-        ]
-      }
-    });
+    async function initViewer() {
+      // 1. Get Token
+      const resp = await fetch('/getToken?identity=viewer-user');
+      const { token } = await resp.json();
 
-    peer.on('open', () => {
-      console.log("VIEWER READY. AUTO-CONNECT TO:", hostId);
-      if (hostId) {
-        document.getElementById("status").innerText = "🔗 Connecting to Host...";
-        connectToHost(hostId);
-      }
-    });
+      // 2. Connect
+      const room = new LiveKitClient.Room();
+      await room.connect(LIVEKIT_URL, token);
+      document.getElementById('status').innerText = "Connected. Waiting for host...";
 
-    function connectToHost(id) {
-      // ✅ CRITICAL: Using null for Receive-Only call
-      const call = peer.call(id, null);
-
-      if (!call) {
-        console.warn("Call failed to initiate. Retrying...");
-        setTimeout(() => connectToHost(id), 1000);
-        return;
-      }
-
-      call.on('stream', stream => {
-        console.log("✅ STREAM RECEIVED");
-        const video = document.getElementById("video");
-        video.srcObject = stream;
-        
-        video.onloadedmetadata = () => {
-          video.play().catch(e => console.warn("Autoplay block:", e));
-          document.getElementById("status").innerText = "Streaming LIVE";
-        };
+      // 3. Handle incoming tracks
+      room.on(LiveKitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        if (track.kind === 'video') {
+          const element = track.attach();
+          element.id = "remoteVideo";
+          document.getElementById('videoContainer').appendChild(element);
+          document.getElementById('status').innerText = "🟢 STREAMING LIVE";
+        }
       });
 
-      call.on('error', err => {
-        console.error("CALL ERROR:", err);
-        document.getElementById("status").innerText = "❌ Error: " + err.type;
+      room.on(LiveKitClient.RoomEvent.TrackUnsubscribed, (track) => {
+        track.detach();
+        document.getElementById('status').innerText = "Host stopped sharing.";
       });
     }
+
+    initViewer();
   </script>
 </body>
 </html>

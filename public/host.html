@@ -2,86 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSync — Host (Hardened)</title>
-  <script src="/peerjs.min.js"></script>
+  <title>TradeSync — Host (LiveKit)</title>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     #localVideo { width: 80%; border-radius: 12px; border: 2px solid #00e5a0; background: black; margin-bottom: 20px; }
     .status { background: #111; padding: 15px 30px; border-radius: 8px; border: 1px solid #333; text-align: center; }
-    #hostIdDisplay { color: #00e5a0; font-family: monospace; font-weight: bold; font-size: 20px; margin-top: 10px; display: block; }
     button { padding: 12px 24px; background: #00e5a0; border: none; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
+    #lkUrl { color: #555; font-size: 10px; margin-top: 10px; display: block; }
   </style>
 </head>
 <body>
-  <h1>TradeSync Host</h1>
+  <h1>TradeSync Host (LiveKit)</h1>
   <video id="localVideo" autoplay playsinline muted></video>
   
   <div class="status">
-    <span id="statusText">Generating Peer ID...</span>
-    <span id="hostIdDisplay">----</span>
-    <button id="startBtn">1. Start Screen Share</button>
+    <div id="statusText">Ready to start LiveKit Stream</div>
+    <button id="startBtn">Start 60FPS Screen Share</button>
+    <span id="lkUrl">Using: wss://your-livekit-tunnel.trycloudflare.com</span>
   </div>
 
   <script>
-    const peer = new Peer({
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          {
-            urls: [
-              "turn:openrelay.metered.ca:80?transport=udp",
-              "turn:openrelay.metered.ca:80?transport=tcp",
-              "turn:openrelay.metered.ca:443?transport=tcp",
-              "turns:openrelay.metered.ca:443?transport=tcp"
-            ],
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          }
-        ]
+    // 🔥 UPDATE THIS with your Cloudflare LiveKit Tunnel URL
+    const LIVEKIT_URL = "ws://localhost:7880"; 
+
+    const startBtn = document.getElementById('startBtn');
+    
+    startBtn.onclick = async () => {
+      startBtn.disabled = true;
+      document.getElementById('statusText').innerText = "Generating Token...";
+
+      // 1. Get Token from our server
+      const resp = await fetch('/getToken?identity=host-user');
+      const { token } = await resp.json();
+
+      // 2. Connect to LiveKit
+      const room = new LiveKitClient.Room();
+      await room.connect(LIVEKIT_URL, token);
+      document.getElementById('statusText').innerText = "Connected to SFU. Capturing screen...";
+
+      // 3. Start Screen Share
+      const stream = await room.localParticipant.setScreenShareEnabled(true, {
+        videoCodec: 'vp8',
+        resolution: { width: 1920, height: 1080 },
+        frameRate: 60
+      });
+
+      // 4. Show locally
+      const videoTrack = room.localParticipant.getTrack(LiveKitClient.Track.Source.ScreenShare);
+      if (videoTrack) {
+        videoTrack.track.attach(document.getElementById('localVideo'));
       }
-    });
 
-
-    let currentStream;
-    let pendingCalls = [];
-
-    peer.on('open', id => {
-      document.getElementById('statusText').innerText = "Click to open Viewer tab:";
-      const viewerUrl = window.location.origin + '/viewer.html?id=' + id;
-      document.getElementById('hostIdDisplay').innerHTML = `<a href="${viewerUrl}" target="_blank" style="color: #00e5a0; text-decoration: none;">${viewerUrl}</a>`;
-      console.log("HOST ID:", id);
-    });
-
-    document.getElementById("startBtn").onclick = async () => {
-      try {
-        currentStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: 60, width: { ideal: 1920 }, height: { ideal: 1080 } }
-        });
-        document.getElementById("localVideo").srcObject = currentStream;
-        document.getElementById("startBtn").innerText = "✔ Screen Sharing Active";
-        document.getElementById("startBtn").style.background = "#222";
-        document.getElementById("startBtn").style.color = "#00e5a0";
-
-        // 🔥 Answer any viewers who were waiting
-        if (pendingCalls.length > 0) {
-          console.log(`[SIGNAL] Answering ${pendingCalls.length} waiting viewers...`);
-          pendingCalls.forEach(call => call.answer(currentStream));
-          pendingCalls = [];
-        }
-      } catch (err) {
-        alert("Please allow screen share to proceed.");
-      }
+      document.getElementById('statusText').innerText = "🟢 LIVE ON NETWORK";
+      startBtn.innerText = "Streaming via SFU";
     };
-
-    peer.on('call', call => {
-      if (!currentStream) {
-        console.log("[SIGNAL] Viewer called early. Queueing call...");
-        pendingCalls.push(call);
-        return;
-      }
-      console.log("[PEER] Answering call... Sending 60FPS stream ✅");
-      call.answer(currentStream);
-    });
   </script>
 </body>
 </html>
