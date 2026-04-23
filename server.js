@@ -19,18 +19,27 @@ app.get('/viewer', (req, res) => res.sendFile(path.join(__dirname, 'public', 'vi
 // ─── ICE / TURN Config Endpoint ───────────────────────
 // Serves reliable free TURN servers over TCP port 443 (works on Render)
 app.get('/api/ice', (req, res) => {
+  // IMPORTANT: Replace 'YOUR_VPS_IP' with your actual Oracle Cloud VPS IP
+  const VPS_IP = 'YOUR_VPS_IP'; 
+
   res.json({
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun.metered.ca:80' },
+      {
+        urls: [
+          `turn:${VPS_IP}:3478`,
+          `turn:${VPS_IP}:3478?transport=tcp`,
+          `turns:${VPS_IP}:5349?transport=tcp`
+        ],
+        username: 'testuser',
+        credential: 'testpass'
+      },
+      // Backup Metered Relay
       {
         urls: [
           'turn:openrelay.metered.ca:80',
           'turn:openrelay.metered.ca:443',
-          'turn:openrelay.metered.ca:443?transport=tcp',
-          'turns:openrelay.metered.ca:443',
-          'turns:openrelay.metered.ca:443?transport=tcp'
+          'turns:openrelay.metered.ca:443'
         ],
         username: 'openrelayproject',
         credential: 'openrelayproject'
@@ -38,6 +47,7 @@ app.get('/api/ice', (req, res) => {
     ]
   });
 });
+
 
 
 
