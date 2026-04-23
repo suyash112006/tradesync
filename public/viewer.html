@@ -158,6 +158,16 @@ audio#remoteAudio{display:none;}
       <span class="tb-label">Size</span>
     </button>
     <div class="tb-sep"></div>
+    <button class="tb-btn" id="voiceBtn" onclick="joinVoice()">
+      <span class="tb-icon">🎙️</span>
+      <span class="tb-label">Voice</span>
+    </button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="forceRepair()">
+      <span class="tb-icon">🛠️</span>
+      <span class="tb-label">Repair</span>
+    </button>
+    <div class="tb-sep"></div>
     <button class="tb-btn" onclick="clearCanvas()">
       <span class="tb-icon">🗑️</span>
       <span class="tb-label">Clear</span>
@@ -203,10 +213,8 @@ let frameCount=0, lastFpsTime=performance.now();
 })();
 
 // ─── ICE Config ───────────────────────────────────────
-// ─── ICE Config (Smart Fetch) ────────────────────────
 let ICE_CONFIG = { 
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-  iceTransportPolicy: 'relay', // NUCLEAR: Force TURN relay
   iceCandidatePoolSize: 10,
   bundlePolicy: 'max-bundle'
 };
@@ -216,11 +224,10 @@ fetch('/api/ice')
   .then(cfg => { 
     ICE_CONFIG = { 
       ...cfg, 
-      iceTransportPolicy: 'relay', // NUCLEAR: Force TURN relay
       iceCandidatePoolSize: 10,
       bundlePolicy: 'max-bundle'
     }; 
-    console.log('[ICE] Nuclear Config Loaded'); 
+    console.log('[ICE] Config Loaded'); 
   })
   .catch(() => console.warn('[ICE] Fallback'));
 
@@ -253,12 +260,12 @@ let isAttaching = false;
 let lastEmitTime=0, lastEmittedX=0, lastEmittedY=0;
 const EMIT_INTERVAL=16;
 let meetingStartTime = null, meetingInterval = null;
+let audioCtx=null, analyser=null, localAudioStream=null, isVoiceJoined=false;
 
 // ─── Status ───────────────────────────────────────────
 function setStatus(s){
   if(pc && pc.connectionState === 'connected' && s === 'waiting') return; 
   const dot=document.getElementById('statusDot'), txt=document.getElementById('statusText');
-  console.log('[DEBUG] UI Status Change:', s);
   if(s==='live'){ dot.className='status-dot live'; txt.textContent='Live'; }
   else if(s==='waiting'){ dot.className='status-dot warning'; txt.textContent='Waiting for host'; }
   else{ dot.className='status-dot'; txt.textContent='Offline'; }
@@ -271,15 +278,6 @@ socket.on('connect',()=>{
   }
   setStatus('waiting'); 
 });
-socket.on('host-online',()=>{ });
-socket.on('host-offline',()=>{
-  console.log('[DEBUG] Event: host-offline received. Entering grace period...');
-  setTimeout(() => {
-    if (pc && pc.connectionState !== 'connected') {
-       resetViewerState('Host offline timeout');
-    }
-  }, 4000);
-});
 socket.on('stop-sharing',()=>{
   resetViewerState('Host stopped sharing');
 });
@@ -291,12 +289,7 @@ socket.on('session-start', (timestamp)=>{
 });
 
 function resetViewerState(reason='Meeting terminated'){
-  console.log('[DEBUG] Action: resetViewerState called. Reason:', reason);
   isAttaching = false; 
-  if (pc && (pc.connectionState === 'connecting' || pc.connectionState === 'connected') && reason === 'Meeting terminated') {
-     return;
-  }
-
   setStatus('waiting');
   if (!video.paused) video.pause();
   video.srcObject = null;
@@ -367,25 +360,19 @@ function createPeerConnection(){
       }, 5000); 
     }
   };
-  pc.onicegatheringstatechange=()=>{
-    console.log('[WEBRTC] ICE Gathering State:', pc.iceGatheringState);
-  };
   pc.onicecandidate=(e)=>{
     if(e.candidate) {
-      console.log('[ICE] Generated local candidate');
       socket.emit('ice-candidate', { roomId, candidate: e.candidate }); 
     }
   };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
-    console.log('[WEBRTC] Connection State Change:', s);
     const el = document.getElementById('diagPeer');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
   };
   pc.oniceconnectionstatechange=()=>{
     const s = pc.iceConnectionState;
-    console.log('[WEBRTC] ICE Connection State Change:', s);
     const el = document.getElementById('diagIce');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
@@ -393,32 +380,24 @@ function createPeerConnection(){
 }
 
 socket.on('offer',async(offer)=>{
-  console.log('[DEBUG] Event: offer received from host');
   if(!pc) createPeerConnection();
   try {
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    console.log('[DEBUG] Success: Remote description (offer) set');
     const ans = await pc.createAnswer(); 
-    console.log('[DEBUG] Success: Answer created');
     await pc.setLocalDescription(ans);
-    console.log('[DEBUG] Success: Local description (answer) set');
     socket.emit('answer', { roomId, answer: ans });
-    console.log('[DEBUG] Success: Answer emitted to signaling server');
   } catch (e) {
-    console.error('[DEBUG] Error during offer processing:', e);
+    console.error(e);
   }
 });
 socket.on('answer',async(a)=>{ 
-  console.log('[DEBUG] Event: answer received from peer');
   if(pc) {
     await pc.setRemoteDescription(new RTCSessionDescription(a)); 
-    console.log('[DEBUG] Success: Remote description (answer) set');
   }
 });
 socket.on('ice-candidate',async(cand)=>{
-  console.log('[ICE] Received remote candidate');
   if(pc) {
-    try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) { console.error('[ICE] Error adding candidate', e); }
+    try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) {}
   }
 });
 
@@ -503,13 +482,16 @@ async function joinVoice(){
   }catch(e){ console.log('Mic denied'); }
 }
 
-function manualPlay() {
-  console.log('[DEBUG] Manual click: Forcing video play');
-  if (video && video.srcObject) {
-    video.play().then(() => {
-      document.getElementById('tapToStart').classList.remove('visible');
-    }).catch(e => console.error('[DEBUG] Manual play failed:', e));
+function manualPlay(){
+  if(video && video.srcObject){
+    video.play().then(()=>document.getElementById('tapToStart').classList.remove('visible')).catch(e=>console.error(e));
   }
+}
+
+function forceRepair(){
+  console.log('[REPAIR] Manually triggered connection repair');
+  if(pc){ pc.close(); pc=null; }
+  socket.emit('register-viewer', roomId);
 }
 
 // ─── Visualizer ───────────────────────────────────────
