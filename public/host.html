@@ -274,16 +274,18 @@ socket.on('connect', ()=>{
 });
 socket.on('viewer-joined', (data)=>{
   const vid = data.viewerId;
+  if (!vid) return;
   viewerIds.add(vid);
   setConn(true); 
   log('New viewer joined!','ok');
   
   if(localStream){ 
-    console.log(`[DEBUG] Stream exists, creating connection for ${vid}`);
-    createPeerConnection(vid);
+    console.log(`[DEBUG] Stream exists, initializing connection for ${vid}`);
+    if(!pcs[vid]) createPeerConnection(vid);
     initiateOffer(vid); 
   }
 });
+
 
 socket.on('viewer-disconnected', (data)=>{ 
   const vid = data.viewerId;
@@ -347,20 +349,21 @@ async function startSharing(isSwitch = false){
     document.getElementById('switchBtn').style.display='flex';
     document.getElementById('stopBtn').style.display='flex';
 
-    // 🔥 Smart Track Attachment: Replace if exists, add if new
+    // 🔥 Smart Track Attachment: Ensure only one PC per viewer
     viewerIds.forEach(vid => {
-       if(!pcs[vid]) createPeerConnection(vid);
-       const pc = pcs[vid];
-       localStream.getTracks().forEach(t => {
-         const sender = pc.getSenders().find(s => s.track && s.track.kind === t.kind);
-         if (sender) {
-           sender.replaceTrack(t);
-         } else {
-           pc.addTrack(t, localStream);
-         }
-       });
-       initiateOffer(vid);
+       if(!pcs[vid]) {
+         createPeerConnection(vid);
+         initiateOffer(vid);
+       } else {
+         const pc = pcs[vid];
+         localStream.getTracks().forEach(t => {
+           const sender = pc.getSenders().find(s => s.track && s.track.kind === t.kind);
+           if (sender) sender.replaceTrack(t);
+           else pc.addTrack(t, localStream);
+         });
+       }
     });
+
 
 
     const track = newStream.getVideoTracks()[0];
