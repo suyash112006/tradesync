@@ -337,9 +337,15 @@ async function startSharing(isSwitch = false){
     log(isSwitch ? 'Switching screen source...' : 'Requesting screen capture...','info');
     
     const newStream = await navigator.mediaDevices.getDisplayMedia({ 
-      video: { frameRate: 60, cursor: 'always' }, 
+      video: { 
+        frameRate: { ideal: 30, max: 30 },
+        width: { max: 1920 },
+        height: { max: 1080 },
+        cursor: 'always' 
+      }, 
       audio: false 
     });
+
     
     localStream = newStream;
     const v=document.getElementById('localVideo'); v.srcObject=localStream; v.style.display='block';
@@ -349,20 +355,18 @@ async function startSharing(isSwitch = false){
     document.getElementById('switchBtn').style.display='flex';
     document.getElementById('stopBtn').style.display='flex';
 
-    // 🔥 Smart Track Attachment: Ensure only one PC per viewer
+    // 🔥 Smart Handshake: Just ensure a PC exists and initiate
     viewerIds.forEach(vid => {
        if(!pcs[vid]) {
          createPeerConnection(vid);
          initiateOffer(vid);
        } else {
-         const pc = pcs[vid];
-         localStream.getTracks().forEach(t => {
-           const sender = pc.getSenders().find(s => s.track && s.track.kind === t.kind);
-           if (sender) sender.replaceTrack(t);
-           else pc.addTrack(t, localStream);
-         });
+         // Tracks were already attached via createPeerConnection logic
+         console.log(`[DEBUG] Signaling viewer ${vid}`);
+         initiateOffer(vid);
        }
     });
+
 
 
 
