@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
 
-<!-- 🔥 PERMANENT FIX: Load Engine FIRST with cache-busting -->
+<!-- 🔥 Injection Placeholder (Server fills this) -->
 <script src="/livekit-client.js?v=1"></script>
 
 <style>
@@ -111,14 +111,15 @@ body{
 const LIVEKIT_URL = "ws://localhost:7880";
 let room = null;
 
+function getEngine() {
+    return window.LiveKit || window.LiveKitClient || window.LivekitClient;
+}
+
 async function initViewer() {
   try {
-    // 🔥 PERMANENT: Determine Global Object
-    const LK = window.LiveKit || window.LiveKitClient;
+    const LK = getEngine();
     if (!LK) {
-        document.getElementById('idleTitle').innerText = "Engine Stalled";
-        document.getElementById('idleText').innerText = "LiveKit not found. Refreshing...";
-        setTimeout(() => location.reload(), 1500);
+        setTimeout(initViewer, 500);
         return;
     }
 
@@ -150,7 +151,8 @@ async function initViewer() {
     console.error("SFU Connection failed", err);
   }
 }
-initViewer();
+
+window.onload = initViewer;
 
 // ─── Drawing Sync (Socket.io) ────────────────────────
 const socket = io({transports:['websocket']});

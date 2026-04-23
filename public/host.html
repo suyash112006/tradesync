@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
 
-<!-- 🔥 PERMANENT FIX: Load Engine FIRST with cache-busting -->
+<!-- 🔥 Injection Placeholder (Server fills this) -->
 <script src="/livekit-client.js?v=1"></script>
 
 <style>
@@ -108,17 +108,22 @@ let room = null;
 let meetingStartTime = null, meetingInterval = null;
 const LIVEKIT_URL = "ws://localhost:7880"; 
 
+// 🔥 Universal Engine Detector
+function getEngine() {
+    return window.LiveKit || window.LiveKitClient || window.LivekitClient;
+}
+
 async function startSharing() {
   try {
-    // 🔥 PERMANENT: Determine the correct Global Object
-    const LK = window.LiveKit || window.LiveKitClient;
+    const LK = getEngine();
     if (!LK) {
-        throw new Error("LiveKit Engine not loaded yet. Refreshing in 1s...");
+        log("❌ Engine not loaded. Trying emergency refresh...", "err");
+        setTimeout(() => location.reload(), 1000);
+        return;
     }
 
     log("Step 1: Fetching Token...", "info");
-    const tokenUrl = window.location.origin + '/getToken?identity=host-user';
-    const resp = await fetch(tokenUrl);
+    const resp = await fetch(window.location.origin + '/getToken?identity=host-user');
     const { token } = await resp.json();
     log("Step 2: Token Received. Connecting to SFU...", "ok");
 
@@ -154,7 +159,6 @@ async function startSharing() {
 
   } catch (err) {
     log("❌ ERROR: " + err.message, "err");
-    if (err.message.includes("not loaded")) setTimeout(() => location.reload(), 1000);
   }
 }
 
@@ -205,6 +209,15 @@ function log(m,t='info'){
   p.scrollTop=p.scrollHeight;
 }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2500); }
+
+// ─── Initial Check ────────────────────────────────────
+window.onload = () => {
+    if (getEngine()) {
+        log("✅ LiveKit Engine loaded successfully", "ok");
+    } else {
+        log("⚠️ Engine not found on load. Waiting...", "info");
+    }
+};
 </script>
 </body>
 </html>
