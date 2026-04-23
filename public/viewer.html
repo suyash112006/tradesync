@@ -281,9 +281,10 @@ socket.on('session-start', (timestamp)=>{
 });
 
 socket.on('host-online', () => {
-  log('Host is online, waiting for stream...','ok');
+  console.log('[VIEWER] Host is online, requesting stream...');
   if(!pc) socket.emit('register-viewer', roomId);
 });
+
 
 
 function resetViewerState(reason='Meeting terminated'){
