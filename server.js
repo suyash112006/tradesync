@@ -13,9 +13,13 @@ const io = new Server(server, {
 app.use(express.static('public'));
 app.use(express.json());
 
-// 🔥 LiveKit Dev Credentials
-const API_KEY = 'devkey';
-const API_SECRET = 'secret';
+// 🔥 Serve LiveKit locally to bypass Tracking Prevention
+app.get('/livekit-client.js', (req, res) => {
+  const lkPath = path.join(__dirname, 'node_modules', 'livekit-client', 'dist', 'livekit-client.umd.js');
+  res.type('application/javascript');
+  res.sendFile(lkPath);
+});
+
 
 // 🔥 Socket.io Drawing Relay
 io.on('connection', (socket) => {
