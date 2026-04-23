@@ -2,10 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSync — Host (SFU)</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/mediasoup-client.min.js"></script>
-
+  <title>TradeSync — Host</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     #localVideo { width: 80%; border-radius: 12px; border: 2px solid #00e5a0; background: black; }
@@ -13,51 +11,45 @@
   </style>
 </head>
 <body>
-  <h1>TradeSync Host (Mediasoup)</h1>
+  <h1>TradeSync Host (PeerJS)</h1>
   <video id="localVideo" autoplay playsinline muted></video>
   <button id="shareBtn" onclick="startSharing()">Start Screen Share</button>
 
   <script>
-    const socket = io();
     const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('room') || 'DEFAULT';
+    const roomId = urlParams.get('room') || 'DEFAULT_ROOM';
     
-    let device;
-    let sendTransport;
+    // 🔥 OpenRelay TURN Config
+    const peer = new Peer(roomId + '-host', {
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          {
+            urls: "turn:openrelay.metered.ca:80?transport=udp",
+            username: "openrelayproject",
+            credential: "openrelayproject"
+          }
+        ]
+      }
+    });
+
+    let localStream;
 
     async function startSharing() {
-      // 1. Get Screen Stream
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      localStream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: { ideal: 30 } }
       });
-      document.getElementById('localVideo').srcObject = stream;
-      const track = stream.getVideoTracks()[0];
-
-      // 2. Join Room & Get Router Capabilities
-      socket.emit('join', { roomId, role: 'host' }, async ({ rtpCapabilities }) => {
-        // 3. Initialize Mediasoup Device
-        device = new mediasoupClient.Device();
-        await device.load({ rtpCapabilities });
-
-        // 4. Create Send Transport
-        socket.emit('createWebRtcTransport', { roomId }, async ({ params }) => {
-          sendTransport = device.createSendTransport(params);
-
-          sendTransport.on('connect', ({ dtlsParameters }, callback, errback) => {
-            socket.emit('connectTransport', { dtlsParameters }, callback);
-          });
-
-          sendTransport.on('produce', ({ kind, rtpParameters }, callback, errback) => {
-            socket.emit('produce', { kind, rtpParameters, roomId }, ({ id }) => callback({ id }));
-          });
-
-          // 5. Start Producing
-          await sendTransport.produce({ track });
-          console.log('Streaming started via Mediasoup SFU');
-          document.getElementById('shareBtn').style.display = 'none';
-        });
-      });
+      document.getElementById('localVideo').srcObject = localStream;
+      document.getElementById('shareBtn').style.display = 'none';
+      console.log('Sharing started. Peer ID:', peer.id);
     }
+
+    peer.on('call', (call) => {
+      console.log('Receiving call from viewer...');
+      if (localStream) {
+        call.answer(localStream);
+      }
+    });
   </script>
 </body>
 </html>
