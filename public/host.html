@@ -438,26 +438,6 @@ async function initiateOffer(options = {}){
 }
 
 // ─── Utils ───────────────────────────────────────────
-  const vCanvas=document.getElementById('audioVisualizer');
-  const vCtx=vCanvas.getContext('2d');
-  const bufferLength=analyser.frequencyBinCount;
-  const dataArray=new Uint8Array(bufferLength);
-  (function draw(){
-    requestAnimationFrame(draw);
-    analyser.getByteTimeDomainData(dataArray);
-    vCtx.fillStyle='rgba(10,12,15,0.4)';
-    vCtx.fillRect(0,0,vCanvas.width,vCanvas.height);
-    vCtx.lineWidth=2; vCtx.strokeStyle='#00e5a0'; vCtx.beginPath();
-    const sw=vCanvas.width/bufferLength; let x=0;
-    for(let i=0;i<bufferLength;i++){
-      const v=dataArray[i]/128.0, y=v*vCanvas.height/2;
-      i===0?vCtx.moveTo(x,y):vCtx.lineTo(x,y); x+=sw;
-    }
-    vCtx.lineTo(vCanvas.width,vCanvas.height/2); vCtx.stroke();
-  })();
-}
-
-// ─── UI Helpers ───────────────────────────────────────
 function toggleFullscreen() {
   const el = document.getElementById('screenArea');
   const btn = document.getElementById('fullscreenBtn');
