@@ -6,7 +6,10 @@
 <title>TradeSync — Viewer (LiveKit)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
-<script src="/livekit-client.js"></script>
+
+<!-- 🔥 PERMANENT FIX: Load Engine FIRST with cache-busting -->
+<script src="/livekit-client.js?v=1"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -110,26 +113,26 @@ let room = null;
 
 async function initViewer() {
   try {
-    // ✅ Origin-Aware Fetch
-    const tokenUrl = window.location.origin + '/getToken?identity=viewer-' + Math.floor(Math.random()*1000);
-    const resp = await fetch(tokenUrl).catch(e => {
-       document.getElementById('idleTitle').innerText = "Connection Refused";
-       document.getElementById('idleText').innerText = "Check if server.js is running on 3000.";
-       throw e;
-    });
-    
+    // 🔥 PERMANENT: Determine Global Object
+    const LK = window.LiveKit || window.LiveKitClient;
+    if (!LK) {
+        document.getElementById('idleTitle').innerText = "Engine Stalled";
+        document.getElementById('idleText').innerText = "LiveKit not found. Refreshing...";
+        setTimeout(() => location.reload(), 1500);
+        return;
+    }
+
+    const resp = await fetch(window.location.origin + '/getToken?identity=viewer-' + Math.floor(Math.random()*1000));
     const { token } = await resp.json();
 
-    room = new LiveKitClient.Room();
-    
-    // ✅ Auto-Protocol Switch
+    room = new LK.Room();
     const url = LIVEKIT_URL.includes('localhost') ? LIVEKIT_URL : LIVEKIT_URL.replace('ws://', 'wss://');
     await room.connect(url, token);
     
     document.getElementById('statusDot').className = 'status-dot live';
     document.getElementById('statusText').innerText = 'Connected';
 
-    room.on(LiveKitClient.RoomEvent.TrackSubscribed, (track) => {
+    room.on(LK.RoomEvent.TrackSubscribed, (track) => {
       if (track.kind === 'video') {
         const el = track.attach();
         document.getElementById('videoContainer').innerHTML = '';
@@ -138,7 +141,7 @@ async function initViewer() {
       }
     });
 
-    room.on(LiveKitClient.RoomEvent.TrackUnsubscribed, () => {
+    room.on(LK.RoomEvent.TrackUnsubscribed, () => {
       document.getElementById('videoContainer').innerHTML = '';
       document.getElementById('idleState').style.display = 'flex';
     });

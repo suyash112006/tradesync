@@ -6,7 +6,10 @@
 <title>TradeSync — Host (LiveKit)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
-<script src="/livekit-client.js"></script>
+
+<!-- 🔥 PERMANENT FIX: Load Engine FIRST with cache-busting -->
+<script src="/livekit-client.js?v=1"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -103,27 +106,23 @@ body{
 // ─── LiveKit Engine ──────────────────────────────────
 let room = null;
 let meetingStartTime = null, meetingInterval = null;
-
-// 🔥 UPDATE THIS with your Cloudflare LiveKit URL
 const LIVEKIT_URL = "ws://localhost:7880"; 
 
 async function startSharing() {
   try {
+    // 🔥 PERMANENT: Determine the correct Global Object
+    const LK = window.LiveKit || window.LiveKitClient;
+    if (!LK) {
+        throw new Error("LiveKit Engine not loaded yet. Refreshing in 1s...");
+    }
+
     log("Step 1: Fetching Token...", "info");
-    
-    // ✅ Origin-Aware Fetch
     const tokenUrl = window.location.origin + '/getToken?identity=host-user';
-    const resp = await fetch(tokenUrl).catch(e => {
-      throw new Error(`Connection Refused on ${tokenUrl}. Is server.js running?`);
-    });
-    
-    if (!resp.ok) throw new Error(`Server returned error ${resp.status}`);
+    const resp = await fetch(tokenUrl);
     const { token } = await resp.json();
     log("Step 2: Token Received. Connecting to SFU...", "ok");
 
-    room = new LiveKitClient.Room();
-    
-    // ✅ Auto-Protocol Switch (wss for cloudflare)
+    room = new LK.Room();
     const url = LIVEKIT_URL.includes('localhost') ? LIVEKIT_URL : LIVEKIT_URL.replace('ws://', 'wss://');
     await room.connect(url, token);
     
@@ -137,11 +136,10 @@ async function startSharing() {
       frameRate: 60
     });
 
-    const videoTrack = room.localParticipant.getTrack(LiveKitClient.Track.Source.ScreenShare);
+    const videoTrack = room.localParticipant.getTrack(LK.Track.Source.ScreenShare);
     if (videoTrack) {
-      const v = document.getElementById('localVideo');
-      videoTrack.track.attach(v);
-      v.style.display = 'block';
+      videoTrack.track.attach(document.getElementById('localVideo'));
+      document.getElementById('localVideo').style.display = 'block';
     }
 
     document.getElementById('idleScreen').style.display = 'none';
@@ -153,17 +151,16 @@ async function startSharing() {
     meetingStartTime = Date.now();
     startMeetingTimer();
     log("FINAL: Stream is LIVE on network! ✅", "ok");
-    showToast("Streaming via LiveKit SFU");
 
   } catch (err) {
     log("❌ ERROR: " + err.message, "err");
-    console.error(err);
+    if (err.message.includes("not loaded")) setTimeout(() => location.reload(), 1000);
   }
 }
 
 function stopSharing() {
   if (room) room.disconnect();
-  location.reload(); // Hard reset for clean state
+  location.reload();
 }
 
 function startMeetingTimer(){
@@ -207,7 +204,7 @@ function log(m,t='info'){
   p.innerHTML+=`<div class="log-line ${t}">[${new Date().toLocaleTimeString()}] ${m}</div>`;
   p.scrollTop=p.scrollHeight;
 }
-function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2500); }
 </script>
 </body>
 </html>

@@ -10,9 +10,15 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-// 🔥 Files in public/ are served automatically (including livekit-client.js)
+// 🔥 Files in public/ are served automatically
 app.use(express.static('public'));
 app.use(express.json());
+
+// 🔥 HARDENED: Force-serve LiveKit with correct MIME
+app.get('/livekit-client.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'public', 'livekit-client.js'));
+});
 
 // 🔥 LiveKit Dev Credentials
 const API_KEY = 'devkey';
@@ -25,7 +31,7 @@ io.on('connection', (socket) => {
   socket.on('clear-canvas', () => socket.broadcast.emit('clear-canvas'));
 });
 
-// 🔥 Hardened Token Generator
+// 🔥 Token Generator
 app.get('/getToken', async (req, res) => {
   try {
     const room = req.query.room || 'tradesync-room';
@@ -49,6 +55,5 @@ app.get('*', (req, res) => {
 
 const PORT = 3000;
 server.listen(PORT, () => {
-  console.log(`TradeSync Server Live on http://localhost:${PORT}`);
-  console.log(`🚀 Token Route: /getToken`);
+  console.log(`TradeSync PERMANENT Server Live on http://localhost:${PORT}`);
 });
