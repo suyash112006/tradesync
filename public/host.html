@@ -2,19 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSync — Host (SFU)</title>
+  <title>TradeSync — Host (Manual)</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    #video { width: 80%; border-radius: 12px; border: 2px solid #00e5a0; background: black; }
-    button { padding: 12px 24px; background: #00e5a0; border: none; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 18px; }
+    #localVideo { width: 80%; border-radius: 12px; border: 2px solid #00e5a0; background: black; margin-bottom: 20px; }
+    .status { background: #111; padding: 15px 30px; border-radius: 8px; border: 1px solid #333; text-align: center; }
+    #hostIdDisplay { color: #00e5a0; font-family: monospace; font-weight: bold; font-size: 20px; margin-top: 10px; display: block; }
+    button { padding: 12px 24px; background: #00e5a0; border: none; border-radius: 8px; color: black; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 16px; }
   </style>
 </head>
 <body>
-  <h1>TradeSync Host (Mediasoup)</h1>
-  <video id="video" autoplay playsinline muted></video>
-  <button onclick="startSharing()">Start Screen Share</button>
+  <h1>TradeSync Host</h1>
+  <video id="localVideo" autoplay playsinline muted></video>
+  
+  <div class="status">
+    <span id="statusText">Generating Peer ID...</span>
+    <span id="hostIdDisplay">----</span>
+    <button id="startBtn">1. Start Screen Share</button>
+  </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="host.js"></script>
+  <script>
+    const peer = new Peer();
+    let currentStream;
+
+    peer.on('open', id => {
+      document.getElementById('statusText').innerText = "Share this ID to Viewer:";
+      document.getElementById('hostIdDisplay').innerText = id;
+      console.log("HOST ID:", id);
+    });
+
+    document.getElementById("startBtn").onclick = async () => {
+      try {
+        currentStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 60, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+        document.getElementById("localVideo").srcObject = currentStream;
+        document.getElementById("startBtn").innerText = "✔ Screen Sharing Active";
+        document.getElementById("startBtn").style.background = "#222";
+        document.getElementById("startBtn").style.color = "#00e5a0";
+      } catch (err) {
+        alert("Please allow screen share to proceed.");
+      }
+    };
+
+    peer.on('call', call => {
+      if (!currentStream) {
+        alert("Viewer is calling, but you haven't started screen sharing yet!");
+        return;
+      }
+      console.log("Answering call from viewer...");
+      call.answer(currentStream);
+    });
+  </script>
 </body>
 </html>
