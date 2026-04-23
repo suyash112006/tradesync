@@ -39,10 +39,12 @@
     let currentStream;
 
     peer.on('open', id => {
-      document.getElementById('statusText').innerText = "Share this ID to Viewer:";
-      document.getElementById('hostIdDisplay').innerText = id;
+      document.getElementById('statusText').innerText = "Click to open Viewer tab:";
+      const viewerUrl = window.location.origin + '/viewer.html?id=' + id;
+      document.getElementById('hostIdDisplay').innerHTML = `<a href="${viewerUrl}" target="_blank" style="color: #00e5a0; text-decoration: none;">${viewerUrl}</a>`;
       console.log("HOST ID:", id);
     });
+
 
     document.getElementById("startBtn").onclick = async () => {
       try {

@@ -30,54 +30,57 @@
     const peer = new Peer({
       config: {
         iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          {
-            urls: "turn:openrelay.metered.ca:80?transport=udp",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          }
-        ]
+          { urls: "stun:stun.l.google.com:19302" }
+        ],
+        iceCandidatePoolSize: 10
       }
     });
 
     peer.on('open', id => {
       console.log("VIEWER ID:", id);
+      
+      // 🔥 Auto-connect if ID is in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const hostId = urlParams.get('id');
+      if (hostId) {
+        document.getElementById("hostId").value = hostId;
+        setTimeout(() => connectToHost(hostId), 500);
+      }
     });
+
+    function connectToHost(hostId) {
+      if (!hostId) return;
+
+      document.getElementById("status").innerText = "Connecting to Host...";
+      // 🔥 Send a minimal stream to ensure PeerJS creates a valid Call object
+      const call = peer.call(hostId, new MediaStream());
+
+      if (call) {
+        call.on('stream', stream => {
+          console.log("Stream received! ✅");
+          const video = document.getElementById("video");
+          video.srcObject = stream;
+          
+          // 🔥 Hardware decoder kickstart
+          video.play().catch(e => console.warn("Autoplay blocked."));
+          setTimeout(() => { if(video.paused) video.play(); }, 1000);
+
+          document.getElementById("status").innerText = "Streaming LIVE";
+          document.querySelector(".controls").style.display = "none";
+        });
+
+        call.on('error', err => {
+          console.error("Call error:", err);
+          document.getElementById("status").innerText = "Error: " + err.type;
+        });
+      }
+    }
 
     document.getElementById("connectBtn").onclick = () => {
       const hostId = document.getElementById("hostId").value.trim();
-      if (!hostId) {
-        alert("Please enter a valid Host ID.");
-        return;
-      }
-
-      document.getElementById("status").innerText = "Connecting to Host...";
-      // 🔥 One-way call to avoid PeerJS sync issues (passing null)
-      const call = peer.call(hostId, null);
-
-      call.on('stream', stream => {
-        console.log("Stream received! ✅");
-        const video = document.getElementById("video");
-        video.srcObject = stream;
-        
-        // 🔥 Hardware decoder kickstart
-        video.play().catch(e => console.warn("Autoplay blocked."));
-        setTimeout(() => { 
-          if(video.paused) video.play(); 
-        }, 1000);
-
-        document.getElementById("status").innerText = "Streaming LIVE";
-        document.querySelector(".controls").style.display = "none";
-      });
-
-
-
-      call.on('error', err => {
-        console.error("Call error:", err);
-        document.getElementById("status").innerText = "Error: " + err.type;
-        alert("Could not connect to Host. Check ID or firewall.");
-      });
+      connectToHost(hostId);
     };
+
   </script>
 </body>
 </html>

@@ -4,12 +4,13 @@ const path = require('path');
 const app = express();
 
 // Serve static files from the 'public' directory
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// 🔥 Serve PeerJS locally to bypass Tracking Prevention
+// 🔥 Serve PeerJS locally with strict MIME type
 app.get('/peerjs.min.js', (req, res) => {
-  res.type('.js');
-  res.sendFile(path.resolve(__dirname, 'node_modules/peerjs/dist/peerjs.min.js'));
+  const scriptPath = path.join(__dirname, 'node_modules', 'peerjs', 'dist', 'peerjs.min.js');
+  res.type('application/javascript');
+  res.sendFile(scriptPath);
 });
 
 // Fallback for direct HTML access
@@ -20,4 +21,5 @@ app.get('*', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`TradeSync Simple Server running on http://localhost:${PORT}`);
+  console.log(`✅ PeerJS Library Linked: http://localhost:${PORT}/peerjs.min.js`);
 });
