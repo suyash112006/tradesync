@@ -30,16 +30,27 @@
     const peer = new Peer({
       config: {
         iceServers: [
-          { urls: "stun:stun.l.google.com:19302" }
+          { urls: "stun:stun.l.google.com:19302" },
+          {
+            urls: [
+              "turn:openrelay.metered.ca:80?transport=udp",
+              "turn:openrelay.metered.ca:80?transport=tcp",
+              "turn:openrelay.metered.ca:443?transport=tcp",
+              "turns:openrelay.metered.ca:443?transport=tcp"
+            ],
+            username: "openrelayproject",
+            credential: "openrelayproject"
+          }
         ],
         iceCandidatePoolSize: 10
       }
     });
 
+    let connWatchdog;
+
     peer.on('open', id => {
       console.log("VIEWER ID:", id);
       
-      // 🔥 Auto-connect if ID is in URL
       const urlParams = new URLSearchParams(window.location.search);
       const hostId = urlParams.get('id');
       if (hostId) {
@@ -50,31 +61,32 @@
 
     function connectToHost(hostId) {
       if (!hostId) return;
-
       document.getElementById("status").innerText = "Connecting to Host...";
-      // 🔥 Send a minimal stream to ensure PeerJS creates a valid Call object
+      
       const call = peer.call(hostId, new MediaStream());
+
+      // 🔥 Watchdog: If no stream in 5s, try once more
+      clearTimeout(connWatchdog);
+      connWatchdog = setTimeout(() => {
+        if (document.getElementById("status").innerText === "Connecting to Host...") {
+          console.log("[WATCHDOG] Connection stalled. Re-kicking...");
+          connectToHost(hostId);
+        }
+      }, 5000);
 
       if (call) {
         call.on('stream', stream => {
+          clearTimeout(connWatchdog);
           console.log("Stream received! ✅");
           const video = document.getElementById("video");
           video.srcObject = stream;
-          
-          // 🔥 Hardware decoder kickstart
           video.play().catch(e => console.warn("Autoplay blocked."));
-          setTimeout(() => { if(video.paused) video.play(); }, 1000);
-
           document.getElementById("status").innerText = "Streaming LIVE";
           document.querySelector(".controls").style.display = "none";
         });
-
-        call.on('error', err => {
-          console.error("Call error:", err);
-          document.getElementById("status").innerText = "Error: " + err.type;
-        });
       }
     }
+
 
     document.getElementById("connectBtn").onclick = () => {
       const hostId = document.getElementById("hostId").value.trim();
