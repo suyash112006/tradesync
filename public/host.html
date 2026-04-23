@@ -42,8 +42,18 @@ body{
 .fps-badge{position:absolute;top:12px;right:16px;background:rgba(0,0,0,0.65);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;z-index:30;pointer-events:none;}
 .draw-indicator{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(15,18,23,0.9);border:1px solid var(--accent);border-radius:8px;padding:6px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);z-index:20;opacity:0;transition:opacity .3s;pointer-events:none;display:flex;align-items:center;gap:8px;}
 .draw-indicator.visible{opacity:1;}
-.tb-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;}
-.tb-sep{width:1px;height:36px;background:var(--border);margin:0 2px;}
+/* ── Toolbar ── */
+.toolbar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:rgba(13,16,21,0.85);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:6px 10px;z-index:100;backdrop-filter:blur(20px);box-shadow:0 12px 40px rgba(0,0,0,0.6);}
+.tb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 12px;border-radius:14px;border:none;background:transparent;color:var(--text);cursor:pointer;transition:all .2s cubic-bezier(0.4,0,0.2,1);min-width:68px;}
+.tb-btn:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px);}
+.tb-btn:active{transform:scale(0.95);}
+.tb-btn.active{background:rgba(0,229,160,0.12);color:var(--accent);}
+.tb-btn.active .tb-icon{color:var(--accent);filter:drop-shadow(0 0 8px var(--accent));}
+.tb-icon{font-size:24px;line-height:1;transition:all 0.2s;}
+.tb-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;transition:color 0.2s;}
+.tb-btn:hover .tb-label{color:var(--text);}
+.tb-sep{width:1px;height:32px;background:var(--border);margin:0 4px;}
+
 
 /* ── Log Panel (popup) ── */
 .log-popup{position:absolute;bottom:90px;right:20px;width:280px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;z-index:200;display:none;max-height:200px;overflow-y:auto;}
@@ -130,9 +140,14 @@ body{
       <span class="tb-icon">🖥️</span>
       <span class="tb-label">Share</span>
     </button>
-    <button class="tb-btn danger-btn" id="stopBtn" onclick="stopSharing()" style="display:none;">
+    <button class="tb-btn" id="stopBtn" onclick="stopSharing()" style="display:none;">
       <span class="tb-icon">⏹️</span>
       <span class="tb-label">Stop</span>
+    </button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" id="previewBtn" onclick="togglePreview()">
+      <span class="tb-icon">👁️</span>
+      <span class="tb-label">Preview</span>
     </button>
     <div class="tb-sep"></div>
     <button class="tb-btn" id="fullscreenBtn" onclick="toggleFullscreen()">
@@ -295,24 +310,15 @@ function showDrawIndicator(){
 async function startSharing(){
   try{
     log('Requesting screen capture...','info');
-    localStream = await navigator.mediaDevices.getDisplayMedia({
-       video: { cursor: 'always' }, 
-       audio: false 
-    });
-    
+    localStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
     const v=document.getElementById('localVideo'); v.srcObject=localStream; v.style.display='block';
-    const diagV = document.getElementById('diagVideo'); diagV.srcObject=localStream;
-    document.getElementById('diagBox').classList.add('visible');
-    
     document.getElementById('idleScreen').style.display='none';
     setStream(true);
     document.getElementById('shareBtn').style.display='none';
     document.getElementById('stopBtn').style.display='flex';
     log('Screen sharing started','ok');
-    
     localStream.getVideoTracks()[0].onended=()=>stopSharing();
     createPeerConnection(); initiateOffer();
-    
     meetingStartTime = Date.now();
     socket.emit('session-start', meetingStartTime);
     startMeetingTimer();
@@ -342,6 +348,7 @@ function stopSharing(){
   document.getElementById('idleScreen').style.display='flex';
   document.getElementById('diagBox').classList.remove('visible');
   document.getElementById('diagVideo').srcObject = null;
+  document.getElementById('previewBtn').classList.remove('active');
   setStream(false);
   document.getElementById('shareBtn').style.display='flex';
   document.getElementById('stopBtn').style.display='none';
@@ -490,6 +497,16 @@ function copyViewerLink(){
   navigator.clipboard.writeText(viewerUrl); 
   showToast('Viewer link copied!'); 
 }
+function togglePreview(){
+  const box = document.getElementById('diagBox');
+  const btn = document.getElementById('previewBtn');
+  const isVisible = box.classList.toggle('visible');
+  btn.classList.toggle('active', isVisible);
+  if (isVisible && localStream) {
+     document.getElementById('diagVideo').srcObject = localStream;
+  }
+}
+
 function toggleLog(){ document.getElementById('logPopup').classList.toggle('open'); }
 const log=(m,t='info')=>{
   const p=document.getElementById('logPopup');
