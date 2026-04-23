@@ -382,7 +382,6 @@ function createPeerConnection(){
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
   };
-  if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
 }
 
 socket.on('offer',async(offer)=>{

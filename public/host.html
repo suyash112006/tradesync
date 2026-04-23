@@ -392,13 +392,6 @@ function createPeerConnection(){
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' || s === 'completed' ? 'ok' : (s === 'failed' ? 'warn' : ''));
   };
-  pc.ontrack=(e)=>{
-    if(e.track.kind==='audio'){
-      document.getElementById('remoteAudio').srcObject=e.streams[0];
-      log('Receiving viewer voice','ok');
-      setupVisualizer(e.streams[0], true);
-    }
-  };
 }
 
 async function initiateOffer(options = {}){
@@ -418,39 +411,7 @@ async function initiateOffer(options = {}){
   }
 }
 
-// ─── Mic ─────────────────────────────────────────────
-async function toggleMic(){
-  const btn=document.getElementById('micBtn');
-  if(isMicOn){
-    if(localAudioStream){ localAudioStream.getTracks().forEach(t=>t.stop()); localAudioStream=null; }
-    isMicOn=false;
-    btn.innerHTML='<span class="tb-icon">🎤</span><span class="tb-label">Mic Off</span>';
-    btn.classList.remove('active');
-    if(pc) initiateOffer();
-  } else {
-    try{
-      localAudioStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true}});
-      isMicOn=true;
-      btn.innerHTML='<span class="tb-icon">🎙️</span><span class="tb-label">Mic On</span>';
-      btn.classList.add('active');
-      setupVisualizer(localAudioStream, false);
-      if(pc){ localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream)); initiateOffer(); }
-    }catch(e){ log('Mic access denied','err'); }
-  }
-}
-
-// ─── Visualizer ───────────────────────────────────────
-function setupVisualizer(stream, isRemote){
-  document.getElementById('vizStrip').style.display='block';
-  if(!audioCtx){
-    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-    analyser=audioCtx.createAnalyser(); analyser.fftSize=256;
-    drawVisualizer();
-  }
-  audioCtx.createMediaStreamSource(stream).connect(analyser);
-}
-
-function drawVisualizer(){
+// ─── Utils ───────────────────────────────────────────
   const vCanvas=document.getElementById('audioVisualizer');
   const vCtx=vCanvas.getContext('2d');
   const bufferLength=analyser.frequencyBinCount;
