@@ -1,185 +1,131 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const mediasoup = require('mediasoup');
 const path = require('path');
 
-
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const httpServer = http.createServer(app);
+const io = new Server(httpServer);
 
-
-app.use(express.static(path.join(__dirname, 'public')));
-app.set('trust proxy', 1);
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
-app.get('/lobby', (req, res) => res.sendFile(path.join(__dirname, 'public', 'lobby.html')));
-app.get('/host', (req, res) => res.sendFile(path.join(__dirname, 'public', 'host.html')));
-app.get('/viewer', (req, res) => res.sendFile(path.join(__dirname, 'public', 'viewer.html')));
-
-// ─── ICE / TURN Config Endpoint ───────────────────────
-// Serves reliable free TURN servers over TCP port 443 (works on Render)
-app.get('/api/ice', (req, res) => {
-  res.json({
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun.relay.metered.ca:80' },
-      // GLOBAL METERED RELAY (TCP/UDP)
-      {
-        urls: [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443',
-          'turn:openrelay.metered.ca:443?transport=tcp',
-          'turns:openrelay.metered.ca:443',
-          'turns:openrelay.metered.ca:443?transport=tcp'
-        ],
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      // GLOBAL VIAGENIE RELAY
-      {
-        urls: 'turn:numb.viagenie.ca',
-        username: 'numb@viagenie.ca',
-        credential: 'numb'
-      }
-    ]
-  });
+app.use(express.static('public'));
+// 🔥 Serve mediasoup-client locally to bypass tracking protection
+app.get('/mediasoup-client.min.js', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'node_modules/mediasoup-client/dist/mediasoup-client.min.js'));
 });
 
+let worker;
+let rooms = new Map(); // roomId -> { router, producers: Map, consumers: Map }
 
+const mediaCodecs = [
+  {
+    kind: 'video',
+    mimeType: 'video/VP8',
+    clockRate: 90000,
+    parameters: {
+      'x-google-start-bitrate': 1000
+    }
+  }
+];
 
+// ─── Mediasoup Worker Setup ───────────────────────────
+(async () => {
+  worker = await mediasoup.createWorker({
+    logLevel: 'warn',
+    rtcMinPort: 2000,
+    rtcMaxPort: 3000,
+  });
+  console.log('Mediasoup Worker Created');
+})();
 
+async function getOrCreateRoom(roomId) {
+  if (rooms.has(roomId)) return rooms.get(roomId);
+  
+  const router = await worker.createRouter({ mediaCodecs });
+  const roomState = { router, producers: new Map(), consumers: new Map(), hostId: null };
+  rooms.set(roomId, roomState);
+  return roomState;
+}
 
-
-// Room structure: roomId -> { hostId, viewers, startTime }
-const rooms = new Map();
-
+// ─── Signaling ────────────────────────────────────────
 io.on('connection', (socket) => {
-  console.log('Connected:', socket.id);
-  let currentRoomId = null;
-  let currentRole = null;
+  console.log('Client connected:', socket.id);
 
-  socket.on('register-host', (roomId) => {
-    if (!roomId) return;
-    currentRoomId = roomId;
-    currentRole = 'host';
-    
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, { hostId: socket.id, viewers: new Set(), startTime: null });
-    } else {
-      const room = rooms.get(roomId);
-      room.hostId = socket.id;
-    }
-    
+  socket.on('join', async ({ roomId, role }, cb) => {
     socket.join(roomId);
-    socket.emit('role-confirmed', 'host');
+    const room = await getOrCreateRoom(roomId);
     
+    if (role === 'host') room.hostId = socket.id;
+    
+    cb({ rtpCapabilities: room.router.rtpCapabilities });
+  });
+
+  socket.on('createWebRtcTransport', async ({ roomId }, cb) => {
     const room = rooms.get(roomId);
-    if (room.viewers.size > 0) {
-      room.viewers.forEach(vid => io.to(vid).emit('host-online'));
-      room.viewers.forEach(vid => socket.emit('viewer-joined', { viewerId: vid }));
-    }
-    console.log(`Host registered for room: ${roomId}`);
-  });
+    const transport = await room.router.createWebRtcTransport({
+      listenIps: [{ ip: '0.0.0.0', announcedIp: null }], // Set announcedIp if on a public server
+      enableUdp: true,
+      enableTcp: true,
+      preferUdp: true,
+    });
 
-  socket.on('register-viewer', (roomId) => {
-    if (!roomId) return;
-    currentRoomId = roomId;
-    currentRole = 'viewer';
+    socket.transport = transport; // Store for this session
     
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, { hostId: null, viewers: new Set([socket.id]), startTime: null });
-    } else {
-      const room = rooms.get(roomId);
-      room.viewers.add(socket.id);
-    }
-    
-    socket.join(roomId);
-    socket.emit('role-confirmed', 'viewer');
-    
-    const room = rooms.get(roomId);
-    if (room.hostId) {
-      if (room.startTime) socket.emit('session-start', room.startTime);
-      // 🔥 Shout once, then re-shout 1s later for safety
-      io.to(room.hostId).emit('viewer-joined', { viewerId: socket.id });
-      setTimeout(() => {
-        io.to(room.hostId).emit('viewer-joined', { viewerId: socket.id });
-      }, 1000);
-    }
-
-
-    console.log(`Viewer registered for room: ${roomId}`);
-  });
-
-  socket.on('offer', (data) => {
-    // data: { roomId, target, offer }
-    if (data.target) {
-      io.to(data.target).emit('offer', { offer: data.offer, from: socket.id });
-    }
-  });
-
-  socket.on('answer', (data) => {
-    // data: { roomId, target, answer }
-    if (data.target) {
-      io.to(data.target).emit('answer', { answer: data.answer, from: socket.id });
-    }
-  });
-
-  socket.on('ice-candidate', (data) => {
-    // data: { roomId, target, candidate }
-    if (data.target) {
-      io.to(data.target).emit('ice-candidate', { candidate: data.candidate, from: socket.id });
-    }
-  });
-
-
-  socket.on('draw-event', (data) => {
-    const room = rooms.get(currentRoomId);
-    if (!room) return;
-    if (socket.id === room.hostId) {
-      room.viewers.forEach((viewerId) => io.to(viewerId).emit('draw-event', data));
-    } else if (room.hostId) {
-      io.to(room.hostId).emit('draw-event', data);
-    }
-  });
-
-  socket.on('clear-canvas', () => {
-    if (currentRoomId) io.to(currentRoomId).emit('clear-canvas');
-  });
-
-  socket.on('session-start', (timestamp) => {
-    const room = rooms.get(currentRoomId);
-    if (room) {
-      room.startTime = timestamp;
-      io.to(currentRoomId).emit('session-start', timestamp);
-    }
-  });
-
-  socket.on('stop-sharing', () => {
-    const room = rooms.get(currentRoomId);
-    if (room) {
-      room.startTime = null;
-      io.to(currentRoomId).emit('stop-sharing');
-    }
-  });
-
-  socket.on('disconnect', () => {
-    if (currentRoomId && rooms.has(currentRoomId)) {
-      const room = rooms.get(currentRoomId);
-      if (currentRole === 'host' && room.hostId === socket.id) {
-        room.viewers.forEach((viewerId) => io.to(viewerId).emit('host-offline'));
-        rooms.delete(currentRoomId); 
-        console.log(`[ROOM] Closed room ${currentRoomId} because host left.`);
-      } else if (currentRole === 'viewer') {
-        room.viewers.delete(socket.id);
-        if (room.hostId) io.to(room.hostId).emit('viewer-disconnected', { viewerId: socket.id });
-        if (!room.hostId && room.viewers.size === 0) rooms.delete(currentRoomId);
+    cb({
+      params: {
+        id: transport.id,
+        iceParameters: transport.iceParameters,
+        iceCandidates: transport.iceCandidates,
+        dtlsParameters: transport.dtlsParameters,
       }
+    });
+  });
+
+  socket.on('connectTransport', async ({ dtlsParameters }, cb) => {
+    await socket.transport.connect({ dtlsParameters });
+    cb();
+  });
+
+  socket.on('produce', async ({ kind, rtpParameters, roomId }, cb) => {
+    const room = rooms.get(roomId);
+    const producer = await socket.transport.produce({ kind, rtpParameters });
+    room.producers.set(socket.id, producer);
+    
+    // Notify viewers in the room
+    socket.to(roomId).emit('new-producer', { producerId: producer.id });
+    cb({ id: producer.id });
+  });
+
+  socket.on('consume', async ({ rtpCapabilities, producerId, roomId }, cb) => {
+    const room = rooms.get(roomId);
+    if (!room.router.canConsume({ producerId, rtpCapabilities })) {
+      return cb({ error: 'Cannot consume' });
     }
-    console.log('Disconnected:', socket.id);
+
+    const consumer = await socket.transport.consume({
+      producerId,
+      rtpCapabilities,
+      paused: true,
+    });
+
+    cb({
+      params: {
+        id: consumer.id,
+        producerId: consumer.producerId,
+        kind: consumer.kind,
+        rtpParameters: consumer.rtpParameters,
+      }
+    });
+
+    socket.consumer = consumer;
+  });
+
+  socket.on('resume', async (cb) => {
+    await socket.consumer.resume();
+    cb();
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server on http://localhost:${PORT}`));
+httpServer.listen(3000, () => {
+  console.log('Mediasoup SFU Server running on http://localhost:3000');
+});
