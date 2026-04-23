@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>TradeSync — Host (Hardened)</title>
   <script src="/peerjs.min.js"></script>
-
   <style>
     body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     #localVideo { width: 80%; border-radius: 12px; border: 2px solid #00e5a0; background: black; margin-bottom: 20px; }
@@ -26,17 +25,12 @@
   <script>
     const peer = new Peer({
       config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          {
-            urls: "turn:openrelay.metered.ca:80?transport=udp",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          }
-        ]
+        iceServers: [ { urls: "stun:stun.l.google.com:19302" } ]
       }
     });
+
     let currentStream;
+    let pendingCalls = [];
 
     peer.on('open', id => {
       document.getElementById('statusText').innerText = "Click to open Viewer tab:";
@@ -44,7 +38,6 @@
       document.getElementById('hostIdDisplay').innerHTML = `<a href="${viewerUrl}" target="_blank" style="color: #00e5a0; text-decoration: none;">${viewerUrl}</a>`;
       console.log("HOST ID:", id);
     });
-
 
     document.getElementById("startBtn").onclick = async () => {
       try {
@@ -55,6 +48,13 @@
         document.getElementById("startBtn").innerText = "✔ Screen Sharing Active";
         document.getElementById("startBtn").style.background = "#222";
         document.getElementById("startBtn").style.color = "#00e5a0";
+
+        // 🔥 Answer any viewers who were waiting
+        if (pendingCalls.length > 0) {
+          console.log(`[SIGNAL] Answering ${pendingCalls.length} waiting viewers...`);
+          pendingCalls.forEach(call => call.answer(currentStream));
+          pendingCalls = [];
+        }
       } catch (err) {
         alert("Please allow screen share to proceed.");
       }
@@ -62,13 +62,13 @@
 
     peer.on('call', call => {
       if (!currentStream) {
-        alert("Viewer is calling, but you haven't started screen sharing yet!");
+        console.log("[SIGNAL] Viewer called early. Queueing call...");
+        pendingCalls.push(call);
         return;
       }
       console.log("[PEER] Answering call... Sending 60FPS stream ✅");
       call.answer(currentStream);
     });
-
   </script>
 </body>
 </html>
