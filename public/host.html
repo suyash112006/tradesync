@@ -363,8 +363,11 @@ async function startSharing(isSwitch = false){
     });
 
 
-    newStream.getVideoTracks()[0].onended = () => stopSharing();
-    
+    const track = newStream.getVideoTracks()[0];
+    track.onended = () => stopSharing();
+    track.onmute = () => console.log("❌ TRACK MUTED (Throttled by browser)");
+    track.onunmute = () => console.log("✅ TRACK ACTIVE (Frames flowing)");
+
     // 🚀 Sender Monitor
     setInterval(() => {
       if (localStream) {
@@ -488,7 +491,7 @@ async function initiateOffer(vid, options = {}){
   } catch (e) { console.error('Offer failed', e); }
 }
 
-// NUCLEAR: Auto-repair pulse every 15 seconds for all viewers
+// NUCLEAR: Auto-repair pulse every 30 seconds (De-escalated to avoid interference)
 setInterval(() => {
   if (localStream) {
     Object.keys(pcs).forEach(vid => {
@@ -499,9 +502,9 @@ setInterval(() => {
         initiateOffer(vid, { iceRestart: true });
       }
     });
-
   }
-}, 15000);
+}, 30000);
+
 
 
 
