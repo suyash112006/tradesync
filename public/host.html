@@ -343,12 +343,20 @@ async function startSharing(isSwitch = false){
     document.getElementById('switchBtn').style.display='flex';
     document.getElementById('stopBtn').style.display='flex';
 
-    // 🔥 Just add tracks - onnegotiationneeded will handle the signaling
+    // 🔥 Smart Track Attachment: Replace if exists, add if new
     viewerIds.forEach(vid => {
        if(!pcs[vid]) createPeerConnection(vid);
        const pc = pcs[vid];
-       localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+       localStream.getTracks().forEach(t => {
+         const sender = pc.getSenders().find(s => s.track && s.track.kind === t.kind);
+         if (sender) {
+           sender.replaceTrack(t);
+         } else {
+           pc.addTrack(t, localStream);
+         }
+       });
     });
+
 
     newStream.getVideoTracks()[0].onended = () => stopSharing();
     meetingStartTime = Date.now();
@@ -448,13 +456,19 @@ async function initiateOffer(vid, options = {}){
 
 
 
-// NUCLEAR: Auto-repair pulse every 15 seconds
+// NUCLEAR: Auto-repair pulse every 15 seconds for all viewers
 setInterval(() => {
-  if (localStream && pc && pc.connectionState !== 'connected') {
-     console.log('[WATCHDOG] Connection not ready, sending repair pulse...');
-     initiateOffer({ iceRestart: true });
+  if (localStream) {
+    Object.keys(pcs).forEach(vid => {
+      const pc = pcs[vid];
+      if (pc && pc.connectionState !== 'connected' && pc.connectionState !== 'connecting') {
+        console.log(`[WATCHDOG] Connection ${vid} not ready, sending repair pulse...`);
+        initiateOffer(vid, { iceRestart: true });
+      }
+    });
   }
 }, 15000);
+
 
 
 // ─── Utils ───────────────────────────────────────────
