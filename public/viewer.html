@@ -34,8 +34,8 @@ body{
 
 /* ── Main ── */
 .main{flex:1;position:relative;overflow:hidden;}
-#remoteVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;}
-#drawCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:5;display:none;touch-action:none;}
+#remoteVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;z-index:1;opacity:1;}
+#drawCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:10;display:none;touch-action:none;}
 .idle-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;}
 .idle-icon{width:80px;height:80px;border:2px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--muted);}
 .idle-state h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;}
@@ -113,7 +113,7 @@ audio#remoteAudio{display:none;}
     <p>Waiting for host to start sharing screen...</p>
     <div class="waiting-anim"><span></span><span></span><span></span></div>
   </div>
-  <video id="remoteVideo" autoplay playsinline muted></video>
+  <video id="remoteVideo" autoplay playsinline></video>
   <canvas id="drawCanvas"></canvas>
   <div class="drawing-badge" id="drawingBadge">✏ Drawing...</div>
   <div class="fps-badge" id="fpsBadge">-- FPS</div>
@@ -321,13 +321,16 @@ function createPeerConnection(){
   if(pc) return;
   pc=new RTCPeerConnection(ICE_CONFIG);
   pc.ontrack=(e)=>{
-    console.log("TRACK RECEIVED", e); // EXACT LOG AS REQUESTED
+    console.log("TRACK RECEIVED", e); 
     if(e.track.kind==='video'){
       isAttaching = true;
-      video.srcObject = new MediaStream([e.track]);
-      video.style.display='block'; 
-      canvas.style.display='block'; 
-      idleState.style.display='none';
+      video.srcObject = e.streams[0]; // GOLDEN FIX: Use stream instead of track
+      
+      video.style.display = 'block';
+      video.style.opacity = '1';
+      canvas.style.display = 'block'; 
+      idleState.style.display = 'none';
+      
       resizeCanvas(); 
       setStatus('live');
       
@@ -350,6 +353,7 @@ function createPeerConnection(){
       }, 5000); 
     }
   };
+
 
   pc.onicecandidate=(e)=>{
     if(e.candidate) {
