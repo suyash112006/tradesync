@@ -360,8 +360,9 @@ function createPeerConnection(){
     const isolatedStream = new MediaStream([e.track]);
     video.srcObject = isolatedStream;
 
-    // 🔥 THE REAL FIX: Wait for the first frame to arrive
-    e.track.onunmute = () => {
+    // 🔥 THE REAL FIX: Check state immediately + wait for event
+    const startVideo = () => {
+      if (e.track.muted) return; 
       console.log("TRACK UNMUTED → PLAY VIDEO ✅");
       video.style.display = "block";
       canvas.style.display = "block"; 
@@ -371,10 +372,13 @@ function createPeerConnection(){
         console.log("PLAYBACK STARTED ✅");
         document.getElementById('tapToStart').classList.remove('visible');
       }).catch(err => {
-        console.warn("Autoplay blocked, showing Tap-to-Start");
-        document.getElementById('tapToStart').classList.add('visible');
+        console.warn("Play blocked:", err);
       });
     };
+
+    e.track.onunmute = startVideo;
+    if (!e.track.muted) startVideo();
+
 
     resizeCanvas(); 
     setStatus('live');

@@ -379,13 +379,23 @@ async function startSharing(isSwitch = false){
     track.onmute = () => console.log("❌ TRACK MUTED (Throttled by browser)");
     track.onunmute = () => console.log("✅ TRACK ACTIVE (Frames flowing)");
 
-    // 🔥 Frame Wake-Up: Prevents browser from throttling frames
+    // 🔥 Frame Wake-Up: Force encoder to stay alive
     setInterval(() => {
       if (track.readyState === "live") {
+        // Toggle track slightly to wake up encoder
         track.enabled = false;
         track.enabled = true;
+        // Request keyframe from all peers
+        Object.values(pcs).forEach(pc => {
+          pc.getSenders().forEach(s => {
+            if(s.track && s.track.kind === 'video') {
+              try { s.rtpTransceiver?.sender.requestKeyFrame?.(); } catch(e){}
+            }
+          });
+        });
       }
     }, 2000);
+
 
     // 🚀 Sender Monitor
     setInterval(() => {
