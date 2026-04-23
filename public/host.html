@@ -338,13 +338,14 @@ async function startSharing(isSwitch = false){
     
     const newStream = await navigator.mediaDevices.getDisplayMedia({ 
       video: { 
-        frameRate: { ideal: 30, max: 30 },
-        width: { max: 1920 },
-        height: { max: 1080 },
+        frameRate: { ideal: 24, max: 30 },
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 },
         cursor: 'always' 
       }, 
       audio: false 
     });
+
 
     
     localStream = newStream;
@@ -374,6 +375,14 @@ async function startSharing(isSwitch = false){
     track.onended = () => stopSharing();
     track.onmute = () => console.log("❌ TRACK MUTED (Throttled by browser)");
     track.onunmute = () => console.log("✅ TRACK ACTIVE (Frames flowing)");
+
+    // 🔥 Frame Wake-Up: Prevents browser from throttling frames
+    setInterval(() => {
+      if (track.readyState === "live") {
+        track.enabled = false;
+        track.enabled = true;
+      }
+    }, 2000);
 
     // 🚀 Sender Monitor
     setInterval(() => {
@@ -507,15 +516,10 @@ setInterval(() => {
         console.log(`[WATCHDOG] Connection ${vid} not ready, sending repair pulse...`);
         initiateOffer(vid, { iceRestart: true });
       }
-      // 🔥 Force Keyframe to wake up the stream
-      pc.getSenders().forEach(s => {
-        if(s.track && s.track.kind === 'video') {
-          try { s.rtpTransceiver?.sender.requestKeyFrame?.(); } catch(e){}
-        }
-      });
     });
   }
-}, 15000); // 🚀 Run every 15s for stability
+}, 15000); 
+
 
 
 

@@ -544,13 +544,13 @@ setInterval(() => {
   }
 }, 5000);
 
-// 🚀 Repair Watchdog (Production Level)
+/* 🚀 Repair Watchdog (Production Level)
 setInterval(() => {
   if (video.srcObject && (video.readyState < 2 || video.paused)) {
     console.log("[WATCHDOG] Stream stalled, repairing...");
     video.play().catch(() => {});
   }
-}, 3000);
+}, 3000); */
 
 
 function forceRepair(){
