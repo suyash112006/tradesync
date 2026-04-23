@@ -321,7 +321,7 @@ function createPeerConnection(){
   if(pc) return;
   pc=new RTCPeerConnection(ICE_CONFIG);
   pc.ontrack=(e)=>{
-    console.log('[TRACK] New remote track received', e.track.kind);
+    console.log("TRACK RECEIVED", e); // EXACT LOG AS REQUESTED
     if(e.track.kind==='video'){
       isAttaching = true;
       video.srcObject = new MediaStream([e.track]);
@@ -358,10 +358,12 @@ function createPeerConnection(){
   };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
+    console.log("STATE:", s); // EXACT LOG AS REQUESTED
     const el = document.getElementById('diagPeer');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
   };
+
   pc.oniceconnectionstatechange=()=>{
     const s = pc.iceConnectionState;
     const el = document.getElementById('diagIce');

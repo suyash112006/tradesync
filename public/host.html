@@ -407,12 +407,13 @@ function createPeerConnection(){
   };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
-    console.log('[WEBRTC] Connection State Change:', s);
+    console.log("STATE:", s); // EXACT LOG AS REQUESTED
     const el = document.getElementById('diagPeer');
     el.textContent = s;
     el.className = 'diag-val ' + (s === 'connected' ? 'ok' : (s === 'failed' ? 'warn' : ''));
     log('WebRTC Connection: '+s,'info');
   };
+
   pc.onicegatheringstatechange=()=>{
     console.log('[WEBRTC] ICE Gathering State:', pc.iceGatheringState);
   };
