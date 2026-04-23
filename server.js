@@ -19,43 +19,34 @@ app.get('/viewer', (req, res) => res.sendFile(path.join(__dirname, 'public', 'vi
 // ─── ICE / TURN Config Endpoint ───────────────────────
 // Serves reliable free TURN servers over TCP port 443 (works on Render)
 app.get('/api/ice', (req, res) => {
-  const VPS_IP = 'YOUR_VPS_IP'; // Placeholder for Oracle
-
   res.json({
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      // PRIMARY: Fly.io Relay (Self-hosted)
-      {
-        urls: [
-          "turn:tradesync-turn.fly.dev:3478",
-          "turn:tradesync-turn.fly.dev:3478?transport=tcp"
-        ],
-        username: "testuser",
-        credential: "testpass"
-      },
-      // SECONDARY: Oracle VPS (Self-hosted)
-      {
-        urls: [
-          `turn:${VPS_IP}:3478`,
-          `turn:${VPS_IP}:3478?transport=tcp`,
-          `turns:${VPS_IP}:5349?transport=tcp`
-        ],
-        username: 'testuser',
-        credential: 'testpass'
-      },
-      // BACKUP: Public Metered Relay
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun.relay.metered.ca:80' },
+      // GLOBAL METERED RELAY (TCP/UDP)
       {
         urls: [
           'turn:openrelay.metered.ca:80',
           'turn:openrelay.metered.ca:443',
-          'turns:openrelay.metered.ca:443'
+          'turn:openrelay.metered.ca:443?transport=tcp',
+          'turns:openrelay.metered.ca:443',
+          'turns:openrelay.metered.ca:443?transport=tcp'
         ],
         username: 'openrelayproject',
         credential: 'openrelayproject'
+      },
+      // GLOBAL VIAGENIE RELAY
+      {
+        urls: 'turn:numb.viagenie.ca',
+        username: 'numb@viagenie.ca',
+        credential: 'numb'
       }
     ]
   });
 });
+
 
 
 

@@ -321,36 +321,36 @@ function createPeerConnection(){
   if(pc) return;
   pc=new RTCPeerConnection(ICE_CONFIG);
   pc.ontrack=(e)=>{
+    console.log('[TRACK] New remote track received', e.track.kind);
     if(e.track.kind==='video'){
-      if (isAttaching && video.srcObject) return;
       isAttaching = true;
-      const newStream = new MediaStream([e.track]);
-      video.srcObject = newStream;
-      video.style.display='block'; canvas.style.display='block'; idleState.style.display='none';
-      resizeCanvas(); setStatus('live');
+      video.srcObject = new MediaStream([e.track]);
+      video.style.display='block'; 
+      canvas.style.display='block'; 
+      idleState.style.display='none';
+      resizeCanvas(); 
+      setStatus('live');
       
       const attemptPlay = () => {
         if (!video.srcObject) return;
         video.play().then(() => {
           document.getElementById('tapToStart').classList.remove('visible');
         }).catch(err => {
-          if (err.name !== 'AbortError') document.getElementById('tapToStart').classList.add('visible');
+          document.getElementById('tapToStart').classList.add('visible');
         });
       };
       
       attemptPlay();
+      e.track.onunmute = attemptPlay;
       
       clearInterval(watchdogInterval);
       watchdogInterval = setInterval(() => {
         if (!pc || pc.connectionState === 'closed') { clearInterval(watchdogInterval); return; }
-        if (video.srcObject && (video.paused || video.currentTime === 0)) {
-           attemptPlay();
-        } else if (video.currentTime > 0) {
-           document.getElementById('tapToStart').classList.remove('visible');
-        }
+        if (video.srcObject && (video.paused || video.currentTime === 0)) attemptPlay();
       }, 5000); 
     }
   };
+
   pc.onicecandidate=(e)=>{
     if(e.candidate) {
       socket.emit('ice-candidate', { roomId, candidate: e.candidate }); 
