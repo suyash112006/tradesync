@@ -333,6 +333,9 @@ function createPeerConnection(){
       canvas.style.display = "block"; 
       idleState.style.display = "none";
       
+      video.muted = true; // ✅Satisfy Autoplay
+      video.playsInline = true;
+      
       video.play().then(() => {
         console.log("VIDEO PLAYING");
         document.getElementById('tapToStart').classList.remove('visible');
@@ -486,10 +489,19 @@ async function joinVoice(){
 }
 
 function manualPlay(){
+  const video = document.getElementById("remoteVideo");
   if(video && video.srcObject){
-    video.play().then(()=>document.getElementById('tapToStart').classList.remove('visible')).catch(e=>console.error(e));
+    video.muted = false; // Unmute on interaction
+    video.play().then(()=>{
+      console.log("Manual play success");
+      document.getElementById('tapToStart').classList.remove('visible');
+    }).catch(e=>console.log("Still blocked:", e));
   }
 }
+
+// Global click listener for easier start
+document.addEventListener("click", () => { manualPlay(); }, { once: true });
+
 
 function forceRepair(){
   console.log('[REPAIR] Manually triggered connection repair');
