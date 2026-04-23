@@ -343,10 +343,11 @@ async function startSharing(isSwitch = false){
     document.getElementById('switchBtn').style.display='flex';
     document.getElementById('stopBtn').style.display='flex';
 
-    // 🔥 Trigger connection for all waiting viewers
+    // 🔥 Just add tracks - onnegotiationneeded will handle the signaling
     viewerIds.forEach(vid => {
-       createPeerConnection(vid); 
-       initiateOffer(vid);
+       if(!pcs[vid]) createPeerConnection(vid);
+       const pc = pcs[vid];
+       localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     });
 
     newStream.getVideoTracks()[0].onended = () => stopSharing();
@@ -420,16 +421,19 @@ function createPeerConnection(vid){
     });
   }
 
+  pc.onnegotiationneeded = async () => {
+    try {
+      console.log(`[WEBRTC] Renegotiation needed for ${vid}`);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('offer', { roomId, target: vid, offer });
+    } catch (e) { console.error('Negotiation failed', e); }
+  };
+
   pc.onicecandidate=({candidate})=>{
     if(candidate) socket.emit('ice-candidate', { roomId, target: vid, candidate }); 
   };
-  pc.onconnectionstatechange=()=>{
-    const s = pc.connectionState;
-    console.log(`STATE (${vid}):`, s); 
-    if(s === 'failed') {
-      setTimeout(() => { if(pcs[vid]) { createPeerConnection(vid); initiateOffer(vid); } }, 2000);
-    }
-  };
+
 }
 
 async function initiateOffer(vid, options = {}){

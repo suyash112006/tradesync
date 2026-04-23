@@ -100,10 +100,10 @@ io.on('connection', (socket) => {
     
     const room = rooms.get(roomId);
     if (room.hostId) {
-      socket.emit('host-online');
       if (room.startTime) socket.emit('session-start', room.startTime);
       io.to(room.hostId).emit('viewer-joined', { viewerId: socket.id });
     }
+
     console.log(`Viewer registered for room: ${roomId}`);
   });
 
