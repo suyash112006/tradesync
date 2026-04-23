@@ -204,8 +204,20 @@ let frameCount=0, lastFpsTime=performance.now();
 })();
 
 // ─── ICE Config ───────────────────────────────────────
-let ICE_CONFIG = { 
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+let ICE_CONFIG = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    {
+      urls: [
+        "turn:openrelay.metered.ca:80?transport=udp",
+        "turn:openrelay.metered.ca:80?transport=tcp",
+        "turn:openrelay.metered.ca:443?transport=tcp",
+        "turns:openrelay.metered.ca:443?transport=tcp"
+      ],
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    }
+  ],
   iceCandidatePoolSize: 10,
   bundlePolicy: 'max-bundle'
 };
@@ -252,6 +264,9 @@ let isAttaching = false;
 let lastEmitTime=0, lastEmittedX=0, lastEmittedY=0;
 const EMIT_INTERVAL=16;
 let meetingStartTime = null, meetingInterval = null;
+let watchdogInterval = null;
+let localAudioStream = null, isVoiceJoined = false;
+let audioCtx = null, analyser = null;
 
 
 // ─── Status ───────────────────────────────────────────
@@ -281,8 +296,7 @@ socket.on('session-start', (timestamp)=>{
 });
 
 socket.on('host-online', () => {
-  console.log('[VIEWER] Host is online, requesting stream...');
-  if(!pc) socket.emit('register-viewer', roomId);
+  console.log('[VIEWER] Host is online');
 });
 
 
@@ -359,10 +373,26 @@ function createPeerConnection(){
     setStatus('live');
   };
   pc.onicecandidate=(e)=>{
-    if(e.candidate && hostId) {
-      socket.emit('ice-candidate', { roomId, target: hostId, candidate: e.candidate }); 
+    if(e.candidate) {
+      console.log("ICE CANDIDATE:", e.candidate.candidate);
+      if(hostId) {
+        socket.emit('ice-candidate', { roomId, target: hostId, candidate: e.candidate }); 
+      }
     }
   };
+
+  // 🔥 Connection Audit
+  setTimeout(async () => {
+    try {
+      const stats = await pc.getStats();
+      stats.forEach(report => {
+        if (report.type === "candidate-pair" && report.state === "succeeded") {
+          console.log(`[AUDIT] Connected via:`, report.localCandidateId);
+        }
+      });
+    } catch(e){}
+  }, 5000);
+
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
     if(s === 'failed' || s === 'disconnected') {
@@ -484,7 +514,7 @@ async function joinVoice(){
     if(pc){
       localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
       const offer=await pc.createOffer(); await pc.setLocalDescription(offer);
-      socket.emit('offer',offer);
+      socket.emit('offer', { roomId, target: hostId, offer });
     }
   }catch(e){ console.log('Mic denied'); }
 }
