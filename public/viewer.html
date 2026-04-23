@@ -328,7 +328,12 @@ function formatDuration(ms){
 function createPeerConnection(){
   if(pc) return;
   pc=new RTCPeerConnection({...ICE_CONFIG, sdpSemantics: 'unified-plan'});
+  
+  // 🔥 Explicitly ask to receive video (Ensures the 'Video Gate' is open)
+  pc.addTransceiver("video", { direction: "recvonly" });
+
   pc.ontrack=(e)=>{
+
     const stream = e.streams[0];
     if(!stream) return;
     video.srcObject = stream;
@@ -345,26 +350,21 @@ function createPeerConnection(){
     resizeCanvas(); 
     setStatus('live');
   };
-  attachDebug(pc, "VIEWER");
-
   pc.onicecandidate=(e)=>{
     if(e.candidate && hostId) {
-      console.log(`[ICE] VIEWER:`, e.candidate.candidate);
       socket.emit('ice-candidate', { roomId, target: hostId, candidate: e.candidate }); 
     }
   };
   pc.onconnectionstatechange=()=>{
     const s = pc.connectionState;
-    console.log("[WEBRTC] VIEWER connectionState:", s); 
     if(s === 'failed' || s === 'disconnected') {
-      console.log('[RECONNECT] Connection lost, re-joining in 1.5s...');
+      console.log('[RECONNECT] Connection dropped, re-joining...');
       setTimeout(() => { 
         if(pc) { pc.close(); pc=null; }
         socket.emit('register-viewer', roomId);
       }, 1500);
     }
   };
-
 
   pc.oniceconnectionstatechange=()=>{
     const s = pc.iceConnectionState;
@@ -489,38 +489,13 @@ function manualPlay(){
   }
 }
 
-// 🚀 Professional Health Monitor
-let lastVideoTime = 0;
+// 🚀 Repair Watchdog (Production Level)
 setInterval(() => {
-  if (video.srcObject) {
-    // 1. ReadyState Check
-    if (video.readyState < 2 || video.paused) {
-      console.log("[HEALTH] Stream stalled/paused, repairing...");
-      video.play().catch(() => {});
-    }
-    
-    // 2. Silent Freeze Detection
-    if (video.currentTime > 0 && video.currentTime === lastVideoTime) {
-      console.warn("[HEALTH] Silent Freeze detected! Resetting connection...");
-      if(pc) { pc.close(); pc = null; }
-      socket.emit('register-viewer', roomId);
-    }
-    lastVideoTime = video.currentTime;
-    
-    console.log("[HEALTH] Status:", {
-      readyState: video.readyState,
-      currentTime: video.currentTime.toFixed(2),
-      paused: video.paused
-    });
+  if (video.srcObject && (video.readyState < 2 || video.paused)) {
+    console.log("[WATCHDOG] Stream stalled, repairing...");
+    video.play().catch(() => {});
   }
 }, 3000);
-
-function attachDebug(pc, label) {
-  pc.onsignalingstatechange = () => console.log(`[WEBRTC] ${label} signalingState:`, pc.signalingState);
-  pc.onicegatheringstatechange = () => console.log(`[WEBRTC] ${label} iceGatheringState:`, pc.iceGatheringState);
-  pc.oniceconnectionstatechange = () => console.log(`[WEBRTC] ${label} iceConnectionState:`, pc.iceConnectionState);
-}
-
 
 
 function forceRepair(){
