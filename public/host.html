@@ -255,7 +255,7 @@ if (!roomId) {
   window.history.replaceState({}, '', `${window.location.pathname}?room=${roomId}`);
 }
 
-let pc=null, localStream=null, drawFadeTimer=null;
+let pc=null, localStream=null, drawFadeTimer=null, viewerReady=false;
 let meetingStartTime = null, meetingInterval = null, meetingSyncInterval = null;
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
@@ -269,17 +269,19 @@ socket.on('connect', ()=>{
   socket.emit('register-host', roomId); 
 });
 socket.on('viewer-joined', ()=>{
-  setConn(true); log('Viewer joined room!','ok');
-  console.log('[DEBUG] Event: viewer-joined received from server');
+  viewerReady = true; 
+  setConn(true); 
+  log('Viewer joined! Ready to share.','ok');
+  
   if(localStream){ 
-    setTimeout(() => {
-      console.log('[DEBUG] Action: Triggering initial offer');
-      initiateOffer(); 
-    }, 500);
+    console.log('[DEBUG] Stream exists, initiating connection...');
+    createPeerConnection();
+    initiateOffer(); 
   } else {
-    console.warn('[DEBUG] Warning: Viewer joined but localStream is missing. Handshake will trigger automatically when you click Share.');
+    console.log('[DEBUG] Viewer waiting for host to share screen.');
   }
 });
+
 socket.on('peer-disconnected', ()=>{ setConn(false); log('Viewer disconnected','err'); });
 socket.on('answer', async(a)=>{ if(pc){ await pc.setRemoteDescription(new RTCSessionDescription(a)); log('WebRTC connected ✓','ok'); } });
 socket.on('offer', async(offer)=>{
@@ -320,44 +322,33 @@ async function startSharing(isSwitch = false){
   try{
     log(isSwitch ? 'Switching screen source...' : 'Requesting screen capture...','info');
     
-    // 🔥 Force 30 FPS for better decoding reliability
     const newStream = await navigator.mediaDevices.getDisplayMedia({ 
       video: { frameRate: 30, cursor: 'always' }, 
       audio: false 
     });
     
-    const newTrack = newStream.getVideoTracks()[0];
+    localStream = newStream;
+    const v=document.getElementById('localVideo'); v.srcObject=localStream; v.style.display='block';
+    document.getElementById('idleScreen').style.display='none';
+    setStream(true);
+    document.getElementById('shareBtn').style.display='none';
+    document.getElementById('switchBtn').style.display='flex';
+    document.getElementById('stopBtn').style.display='flex';
 
-    if (isSwitch && pc) {
-       // Seamless replace
-       const videoSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-       if (videoSender) {
-          await videoSender.replaceTrack(newTrack);
-          log('Source switched ✓','ok');
-       }
-       if(localStream) localStream.getTracks().forEach(t=>t.stop());
-       localStream = newStream;
-    } else {
-       // New session
-       if(pc) { pc.close(); pc = null; } // Ensure clean start
-       localStream = newStream;
-       setStream(true);
-       document.getElementById('shareBtn').style.display='none';
-       document.getElementById('switchBtn').style.display='flex';
-       document.getElementById('stopBtn').style.display='flex';
-       document.getElementById('idleScreen').style.display='none';
-       
-       const v=document.getElementById('localVideo'); v.srcObject=localStream; v.style.display='block';
-       
+    // 🔥 Trigger connection ONLY after stream is ready
+    if (viewerReady) {
+       console.log('[DEBUG] Viewer is waiting, creating PC now...');
        createPeerConnection(); 
        await initiateOffer();
     }
 
-    newTrack.onended = () => stopSharing();
+    newStream.getVideoTracks()[0].onended = () => stopSharing();
     meetingStartTime = Date.now();
     startMeetingTimer();
+    log('Sharing started ✅','ok');
   }catch(e){ log('Share failed','err'); console.error(e); }
 }
+
 
 
 function startMeetingTimer(){

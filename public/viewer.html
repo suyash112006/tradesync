@@ -322,53 +322,39 @@ function createPeerConnection(){
   pc=new RTCPeerConnection({...ICE_CONFIG, sdpSemantics: 'unified-plan'});
   pc.ontrack=(e)=>{
     console.log("TRACK RECEIVED", e); 
-    if(e.track.kind==='video'){
-      const stream = new MediaStream();
-      stream.addTrack(e.track); // ✅ SAFE METHOD
-      video.srcObject = stream;
-      
-      video.style.display = "block";
-      video.style.visibility = "visible";
-      video.style.opacity = "1";
-      canvas.style.display = "block"; 
-      idleState.style.display = "none";
+    const stream = e.streams[0];
+    if(!stream) return;
 
-      video.muted = true;
-      video.playsInline = true;
+    video.srcObject = stream;
+    video.style.display = "block";
+    canvas.style.display = "block"; 
+    idleState.style.display = "none";
 
-      video.onloadedmetadata = () => {
-        console.log("METADATA LOADED");
-        video.play().then(() => {
-          console.log("VIDEO PLAYING ✅");
-          document.getElementById('tapToStart').classList.remove('visible');
-        }).catch(err => {
-          console.log("PLAY ERROR:", err);
-          document.getElementById('tapToStart').classList.add('visible');
-        });
-      };
+    video.onloadedmetadata = () => {
+      console.log("METADATA LOADED ✅");
+      video.play().then(() => {
+        console.log("VIDEO PLAYING ✅");
+        document.getElementById('tapToStart').classList.remove('visible');
+      }).catch(err => {
+        console.log("PLAY ERROR:", err);
+        document.getElementById('tapToStart').classList.add('visible');
+      });
+    };
 
-      // 🔥 Force refresh if stuck
-      setTimeout(() => {
-        if (video.readyState === 0) {
-          console.log("FORCE RELOAD STREAM");
-          video.srcObject = null;
-          video.srcObject = stream;
-        }
-        console.log("Video readyState:", video.readyState);
-      }, 2000);
+    // Safety fallback for readyState
+    setTimeout(() => {
+      if (video.readyState === 0) {
+        console.log("FORCE RE-ATTACH");
+        video.srcObject = null;
+        video.srcObject = stream;
+      }
+      console.log("Video readyState:", video.readyState);
+    }, 1500);
 
-      resizeCanvas(); 
-      setStatus('live');
-      
-      clearInterval(watchdogInterval);
-      watchdogInterval = setInterval(() => {
-        if (!pc || pc.connectionState === 'closed') { clearInterval(watchdogInterval); return; }
-        if (video.srcObject && (video.paused || video.currentTime === 0)) {
-           video.play().catch(()=>{});
-        }
-      }, 5000); 
-    }
+    resizeCanvas(); 
+    setStatus('live');
   };
+
 
 
 
