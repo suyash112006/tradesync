@@ -491,19 +491,25 @@ async function initiateOffer(vid, options = {}){
   } catch (e) { console.error('Offer failed', e); }
 }
 
-// NUCLEAR: Auto-repair pulse every 30 seconds (De-escalated to avoid interference)
+// NUCLEAR: Auto-repair pulse every 30 seconds
 setInterval(() => {
   if (localStream) {
     Object.keys(pcs).forEach(vid => {
       const pc = pcs[vid];
-      // 🛡️ Only repair if connection is truly dead AND signaling is stable
       if (pc && pc.connectionState !== 'connected' && pc.connectionState !== 'connecting' && pc.signalingState === 'stable') {
         console.log(`[WATCHDOG] Connection ${vid} not ready, sending repair pulse...`);
         initiateOffer(vid, { iceRestart: true });
       }
+      // 🔥 Force Keyframe to wake up the stream
+      pc.getSenders().forEach(s => {
+        if(s.track && s.track.kind === 'video') {
+          try { s.rtpTransceiver?.sender.requestKeyFrame?.(); } catch(e){}
+        }
+      });
     });
   }
-}, 30000);
+}, 15000); // 🚀 Run every 15s for stability
+
 
 
 

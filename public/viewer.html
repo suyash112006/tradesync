@@ -349,19 +349,17 @@ function createPeerConnection(){
   pc.ontrack=(e)=>{
     console.log("TRACK RECEIVED ✅", e);
     
-    // 🔥 Isolated Attach: Create a fresh stream container for this track
+    // 🔥 Isolated Attach
     const isolatedStream = new MediaStream([e.track]);
     video.srcObject = isolatedStream;
 
-    video.style.display = "block";
-    canvas.style.display = "block"; 
-    idleState.style.display = "none";
-    
-    video.onplaying = () => console.log("VIDEO PLAYING ✅");
-    video.onwaiting = () => console.log("VIDEO WAITING (Buffering)...");
-
-    video.onloadedmetadata = () => {
-      console.log("METADATA LOADED ✅");
+    // 🔥 THE REAL FIX: Wait for the first frame to arrive
+    e.track.onunmute = () => {
+      console.log("TRACK UNMUTED → PLAY VIDEO ✅");
+      video.style.display = "block";
+      canvas.style.display = "block"; 
+      idleState.style.display = "none";
+      
       video.play().then(() => {
         console.log("PLAYBACK STARTED ✅");
         document.getElementById('tapToStart').classList.remove('visible');
