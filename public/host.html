@@ -444,10 +444,23 @@ function createPeerConnection(vid){
     }, 100);
   }
 
+  attachDebug(pc, vid);
+
   pc.onicecandidate=({candidate})=>{
-    if(candidate) socket.emit('ice-candidate', { roomId, target: vid, candidate }); 
+    if(candidate) {
+      console.log(`[ICE] ${vid}:`, candidate.candidate);
+      socket.emit('ice-candidate', { roomId, target: vid, candidate }); 
+    }
   };
 }
+
+function attachDebug(pc, label) {
+  pc.onconnectionstatechange = () => console.log(`[WEBRTC] ${label} connectionState:`, pc.connectionState);
+  pc.oniceconnectionstatechange = () => console.log(`[WEBRTC] ${label} iceConnectionState:`, pc.iceConnectionState);
+  pc.onicegatheringstatechange = () => console.log(`[WEBRTC] ${label} iceGatheringState:`, pc.iceGatheringState);
+  pc.onsignalingstatechange = () => console.log(`[WEBRTC] ${label} signalingState:`, pc.signalingState);
+}
+
 
 async function initiateOffer(vid, options = {}){
   const pc = pcs[vid];
