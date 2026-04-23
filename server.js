@@ -8,6 +8,7 @@ app.use(express.static('public'));
 
 // 🔥 Serve PeerJS locally to bypass Tracking Prevention
 app.get('/peerjs.min.js', (req, res) => {
+  res.type('.js');
   res.sendFile(path.resolve(__dirname, 'node_modules/peerjs/dist/peerjs.min.js'));
 });
 
