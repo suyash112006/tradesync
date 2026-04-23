@@ -1,52 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>TradeSync — Viewer (LiveKit)</title>
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
-  <style>
-    body { background: #0a0c0f; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-    #remoteVideo { width: 100%; height: 100%; object-fit: contain; background: black; }
-    #status { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px; color: #00cfff; font-family: monospace; font-size: 12px; pointer-events: none; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TradeSync — Viewer (LiveKit)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a0f; --surface:#111118; --border:#1e242d;
+  --accent:#00cfff; --accent2:#ff6b35; --text:#e8e8f0;
+  --muted:#555570; --danger:#ff3366;
+}
+body{
+  background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;
+  display:flex;flex-direction:column;overflow:hidden;touch-action:none;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.logo{font-family:'Inter',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.5px;}
+.logo span{color:var(--accent);}
+.role-badge{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border:1px solid var(--accent);color:var(--accent);border-radius:2px;}
+.status-bar{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted);position:relative;}
+.timer-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);min-width:80px;justify-content:center;margin-right:10px;}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:all .3s;}
+.status-dot.live{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.main{flex:1;position:relative;overflow:hidden;}
+#videoContainer{position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:black;}
+#videoContainer video{width:100%;height:100%;object-fit:contain;}
+#drawCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;z-index:5;touch-action:none;}
+.idle-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;background:var(--bg);z-index:10;}
+.idle-icon{width:80px;height:80px;border:2px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--muted);}
+.fps-badge{position:absolute;top:12px;right:16px;background:rgba(0,0,0,0.65);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;z-index:30;pointer-events:none;}
+.toolbar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:rgba(17,17,24,0.88);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:8px 10px;z-index:100;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
+.tb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 12px;border-radius:10px;border:none;background:transparent;color:var(--text);cursor:pointer;transition:all .18s;min-width:54px;font-family:'Inter',sans-serif;}
+.tb-btn:hover{background:rgba(255,255,255,0.07);}
+.tb-btn.active{background:rgba(0,207,255,0.12);}
+.tb-btn.active .tb-icon{color:var(--accent);}
+.tb-icon{font-size:20px;line-height:1;}
+.tb-label{font-size:9px;font-weight:700;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;}
+.tb-sep{width:1px;height:36px;background:var(--border);margin:0 2px;}
+.cur-color-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);display:inline-block;vertical-align:middle;margin-bottom:2px;}
+.color-popup{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);background:rgba(17,17,24,0.95);border:1px solid var(--border);border-radius:14px;padding:12px 14px;z-index:200;display:none;gap:8px;flex-wrap:wrap;width:180px;backdrop-filter:blur(16px);}
+.color-popup.open{display:flex;}
+.color-swatch{width:30px;height:30px;border-radius:6px;cursor:pointer;border:2px solid transparent;}
+.color-swatch.active{border-color:#fff;}
+</style>
 </head>
 <body>
-  <div id="videoContainer" style="width:100%; height:100%;">
-    <!-- Video element will be attached here by LiveKit -->
+
+<div class="topbar">
+  <div class="logo">Trade<span>Sync</span></div>
+  <div class="role-badge">VIEWER</div>
+  <div class="status-bar">
+    <div class="timer-badge" id="meetingTimer">00:00:00</div>
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">SFU Offline</span>
   </div>
-  <div id="status">Connecting to SFU...</div>
+</div>
 
-  <script>
-    // 🔥 UPDATE THIS with your Cloudflare LiveKit Tunnel URL
-    const LIVEKIT_URL = "ws://localhost:7880";
+<div class="main" id="mainArea">
+  <div class="idle-state" id="idleState">
+    <div class="idle-icon">📡</div>
+    <h2>Waiting for SFU</h2>
+    <p>Connecting to LiveKit server...</p>
+  </div>
 
-    async function initViewer() {
-      // 1. Get Token
-      const resp = await fetch('/getToken?identity=viewer-user');
-      const { token } = await resp.json();
+  <div id="videoContainer"></div>
+  <canvas id="drawCanvas"></canvas>
+  <div class="fps-badge" id="fpsBadge">-- FPS</div>
 
-      // 2. Connect
-      const room = new LiveKitClient.Room();
-      await room.connect(LIVEKIT_URL, token);
-      document.getElementById('status').innerText = "Connected. Waiting for host...";
+  <div class="color-popup" id="colorPopup">
+    <div class="color-swatch active" style="background:#00cfff" data-color="#00cfff" onclick="setColor(this)"></div>
+    <div class="color-swatch" style="background:#ff3366" data-color="#ff3366" onclick="setColor(this)"></div>
+    <div class="color-swatch" style="background:#00ff88" data-color="#00ff88" onclick="setColor(this)"></div>
+    <div class="color-swatch" style="background:#ffdd00" data-color="#ffdd00" onclick="setColor(this)"></div>
+    <div class="color-swatch" style="background:#ffffff" data-color="#ffffff" onclick="setColor(this)"></div>
+  </div>
 
-      // 3. Handle incoming tracks
-      room.on(LiveKitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-        if (track.kind === 'video') {
-          const element = track.attach();
-          element.id = "remoteVideo";
-          document.getElementById('videoContainer').appendChild(element);
-          document.getElementById('status').innerText = "🟢 STREAMING LIVE";
-        }
-      });
+  <div class="toolbar">
+    <button class="tb-btn active" id="toolPenBtn" onclick="setTool('pen')">
+      <span class="tb-icon">✏️</span>
+      <span class="tb-label">Pen</span>
+    </button>
+    <button class="tb-btn" id="toolEraserBtn" onclick="setTool('eraser')">
+      <span class="tb-icon">🧹</span>
+      <span class="tb-label">Erase</span>
+    </button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" id="colorBtn" onclick="togglePopup('colorPopup')">
+      <span class="tb-icon"><span class="cur-color-dot" id="curColorDot" style="background:#00cfff"></span></span>
+      <span class="tb-label">Color</span>
+    </button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="clearCanvas()">
+      <span class="tb-icon">🗑️</span>
+      <span class="tb-label">Clear</span>
+    </button>
+  </div>
+</div>
 
-      room.on(LiveKitClient.RoomEvent.TrackUnsubscribed, (track) => {
-        track.detach();
-        document.getElementById('status').innerText = "Host stopped sharing.";
-      });
-    }
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ─── LiveKit Engine ──────────────────────────────────
+const LIVEKIT_URL = "ws://localhost:7880";
+let room = null;
 
-    initViewer();
-  </script>
+async function initViewer() {
+  try {
+    const resp = await fetch('/getToken?identity=viewer-' + Math.floor(Math.random()*1000));
+    const { token } = await resp.json();
+
+    room = new LiveKitClient.Room();
+    await room.connect(LIVEKIT_URL, token);
+    
+    document.getElementById('statusDot').className = 'status-dot live';
+    document.getElementById('statusText').innerText = 'Connected';
+
+    room.on(LiveKitClient.RoomEvent.TrackSubscribed, (track) => {
+      if (track.kind === 'video') {
+        const el = track.attach();
+        document.getElementById('videoContainer').innerHTML = '';
+        document.getElementById('videoContainer').appendChild(el);
+        document.getElementById('idleState').style.display = 'none';
+      }
+    });
+
+    room.on(LiveKitClient.RoomEvent.TrackUnsubscribed, () => {
+      document.getElementById('videoContainer').innerHTML = '';
+      document.getElementById('idleState').style.display = 'flex';
+    });
+
+  } catch (err) {
+    console.error("SFU Connection failed", err);
+  }
+}
+initViewer();
+
+// ─── Drawing Sync (Socket.io) ────────────────────────
+const socket = io({transports:['websocket']});
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+function resizeCanvas(){ const r=canvas.parentElement.getBoundingClientRect(); canvas.width=r.width; canvas.height=r.height; }
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+let drawing=false, lastX=0, lastY=0, currentColor='#00cfff', currentTool='pen';
+
+function getPos(e){ const rect=canvas.getBoundingClientRect(); const cx=e.touches?e.touches[0].clientX:e.clientX; const cy=e.touches?e.touches[0].clientY:e.clientY; return{x:(cx-rect.left)/rect.width,y:(cy-rect.top)/rect.height}; }
+function drawLine(x0,y0,x1,y1,color,tool){ ctx.beginPath(); ctx.moveTo(x0*canvas.width,y0*canvas.height); ctx.lineTo(x1*canvas.width,y1*canvas.height); ctx.strokeStyle=tool==='eraser'?'#000':color; ctx.lineWidth=tool==='eraser'?20:4; ctx.lineCap='round'; ctx.stroke(); }
+
+canvas.addEventListener('mousedown',(e)=>{ drawing=true; const p=getPos(e); lastX=p.x; lastY=p.y; });
+canvas.addEventListener('mousemove',(e)=>{ 
+  if(!drawing) return; 
+  const p=getPos(e);
+  drawLine(lastX,lastY,p.x,p.y,currentColor,currentTool);
+  socket.emit('draw-event',{x0:lastX,y0:lastY,x1:p.x,y1:p.y,color:currentColor,size:4,tool:currentTool});
+  lastX=p.x; lastY=p.y;
+});
+canvas.addEventListener('mouseup',()=>drawing=false);
+socket.on('clear-canvas',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
+
+// ─── Tools ────────────────────────────────────────────
+function setTool(tool){ currentTool=tool; document.getElementById('toolPenBtn').classList.toggle('active',tool==='pen'); document.getElementById('toolEraserBtn').classList.toggle('active',tool==='eraser'); }
+function setColor(el){ currentColor=el.dataset.color; document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active')); el.classList.add('active'); document.getElementById('curColorDot').style.background=currentColor; document.getElementById('colorPopup').classList.remove('open'); }
+function togglePopup(id){ document.getElementById(id).classList.toggle('open'); }
+function clearCanvas(){ ctx.clearRect(0,0,canvas.width,canvas.height); socket.emit('clear-canvas'); }
+</script>
 </body>
 </html>
