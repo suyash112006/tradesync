@@ -42,21 +42,6 @@ body{
 .fps-badge{position:absolute;top:12px;right:16px;background:rgba(0,0,0,0.65);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;z-index:30;pointer-events:none;}
 .draw-indicator{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(15,18,23,0.9);border:1px solid var(--accent);border-radius:8px;padding:6px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);z-index:20;opacity:0;transition:opacity .3s;pointer-events:none;display:flex;align-items:center;gap:8px;}
 .draw-indicator.visible{opacity:1;}
-audio#remoteAudio{display:none;}
-
-/* ── Visualizer ── */
-.viz-strip{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);width:260px;height:44px;background:rgba(10,12,15,0.75);border:1px solid var(--border);border-radius:10px;overflow:hidden;z-index:50;backdrop-filter:blur(8px);}
-#audioVisualizer{width:100%;height:100%;display:block;}
-
-/* ── Zoom-Style Toolbar ── */
-.toolbar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(15,18,23,0.88);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:8px 12px;z-index:100;backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
-.tb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 14px;border-radius:10px;border:none;background:transparent;color:var(--text);cursor:pointer;transition:all .18s;min-width:60px;}
-.tb-btn:hover{background:rgba(255,255,255,0.07);}
-.tb-btn.active{background:rgba(0,229,160,0.12);}
-.tb-btn.active .tb-icon{color:var(--accent);}
-.tb-btn.danger-btn.on{background:rgba(255,77,109,0.15);}
-.tb-btn.danger-btn.on .tb-icon{color:var(--warn);}
-.tb-icon{font-size:22px;line-height:1;}
 .tb-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;}
 .tb-sep{width:1px;height:36px;background:var(--border);margin:0 2px;}
 
@@ -117,7 +102,6 @@ audio#remoteAudio{display:none;}
     <div class="idle-sub">Click <strong>Share Screen</strong> below to begin.</div>
   </div>
   <video id="localVideo" autoplay muted playsinline></video>
-  <audio id="remoteAudio" autoplay></audio>
   <canvas id="drawCanvas"></canvas>
   
   <!-- Connection Diagnostics -->
@@ -136,13 +120,9 @@ audio#remoteAudio{display:none;}
     <video id="diagVideo" autoplay muted playsinline></video>
     <button class="repair-btn" onclick="startSharing()">REPAIR BLACK SCREEN</button>
   </div>
+  
   <div class="draw-indicator" id="drawIndicator"><div class="dot green"></div>Viewer is drawing...</div>
   <div class="fps-badge" id="fpsBadge">-- FPS</div>
-
-  <!-- Visualizer strip (shows when voice active) -->
-  <div class="viz-strip" id="vizStrip" style="display:none;">
-    <canvas id="audioVisualizer"></canvas>
-  </div>
 
   <!-- Zoom Toolbar -->
   <div class="toolbar">
@@ -153,11 +133,6 @@ audio#remoteAudio{display:none;}
     <button class="tb-btn danger-btn" id="stopBtn" onclick="stopSharing()" style="display:none;">
       <span class="tb-icon">⏹️</span>
       <span class="tb-label">Stop</span>
-    </button>
-    <div class="tb-sep"></div>
-    <button class="tb-btn" id="micBtn" onclick="toggleMic()">
-      <span class="tb-icon">🎤</span>
-      <span class="tb-label">Mic Off</span>
     </button>
     <div class="tb-sep"></div>
     <button class="tb-btn" id="fullscreenBtn" onclick="toggleFullscreen()">
@@ -257,10 +232,7 @@ if (!roomId) {
 }
 
 let pc=null, localStream=null, drawFadeTimer=null;
-let localAudioStream=null, isMicOn=false;
-let audioCtx=null, analyser=null;
 let meetingStartTime = null, meetingInterval = null, meetingSyncInterval = null;
-
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -323,7 +295,6 @@ function showDrawIndicator(){
 async function startSharing(){
   try{
     log('Requesting screen capture...','info');
-    // Using high compatibility constraints - Entire Screen is often safer
     localStream = await navigator.mediaDevices.getDisplayMedia({
        video: { cursor: 'always' }, 
        audio: false 
@@ -339,17 +310,7 @@ async function startSharing(){
     document.getElementById('stopBtn').style.display='flex';
     log('Screen sharing started','ok');
     
-    // Safety check for black stream
-    setTimeout(() => {
-       if (localStream && localStream.active) {
-          console.log('[WATCHDOG] Stream active. Please check the Preview box.');
-       }
-    }, 2000);
-
-    // Ensure tracks are enabled
-    localStream.getTracks().forEach(t => t.enabled = true);
     localStream.getVideoTracks()[0].onended=()=>stopSharing();
-    
     createPeerConnection(); initiateOffer();
     
     meetingStartTime = Date.now();
@@ -400,7 +361,6 @@ function createPeerConnection(){
   if(pc) pc.close();
   pc = new RTCPeerConnection(ICE_CONFIG);
   if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
-  if(localAudioStream) localAudioStream.getTracks().forEach(t=>pc.addTrack(t,localAudioStream));
   pc.onicecandidate=({candidate})=>{
     if(candidate) {
       console.log('[ICE] Generated local candidate');

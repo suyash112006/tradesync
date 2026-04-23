@@ -114,15 +114,9 @@ audio#remoteAudio{display:none;}
     <div class="waiting-anim"><span></span><span></span><span></span></div>
   </div>
   <video id="remoteVideo" autoplay playsinline muted></video>
-  <audio id="remoteAudio" autoplay></audio>
   <canvas id="drawCanvas"></canvas>
   <div class="drawing-badge" id="drawingBadge">✏ Drawing...</div>
   <div class="fps-badge" id="fpsBadge">-- FPS</div>
-
-  <!-- Visualizer -->
-  <div class="viz-strip" id="vizStrip">
-    <canvas id="audioVisualizer"></canvas>
-  </div>
 
   <!-- Color Popup -->
   <div class="color-popup" id="colorPopup">
@@ -167,11 +161,6 @@ audio#remoteAudio{display:none;}
     <button class="tb-btn" onclick="clearCanvas()">
       <span class="tb-icon">🗑️</span>
       <span class="tb-label">Clear</span>
-    </button>
-    <div class="tb-sep"></div>
-    <button class="tb-btn" id="voiceBtn" onclick="joinVoice()">
-      <span class="tb-icon">🎙️</span>
-      <span class="tb-label">Voice</span>
     </button>
     <div class="tb-sep"></div>
     <button class="tb-btn" id="fsBtn" onclick="toggleFs()">
@@ -241,7 +230,6 @@ const roomId = urlParams.get('room');
 
 if (!roomId) {
   alert('Error: Room ID is missing. Please use a valid invite link.');
-  // Optionally redirect or show UI error
 }
 
 const video=document.getElementById('remoteVideo');
@@ -253,16 +241,14 @@ const drawingBadge=document.getElementById('drawingBadge');
 let pc=null, drawing=false, lastX=0, lastY=0;
 let currentColor='#00cfff', currentSize=4, currentTool='pen';
 let drawBadgeTimeout=null, watchdogInterval=null;
-let isAttaching = false; // Prevents race conditions during track setup
-let localAudioStream=null, isVoiceJoined=false;
-let audioCtx=null, analyser=null;
+let isAttaching = false; 
 let lastEmitTime=0, lastEmittedX=0, lastEmittedY=0;
 const EMIT_INTERVAL=16;
 let meetingStartTime = null, meetingInterval = null;
 
 // ─── Status ───────────────────────────────────────────
 function setStatus(s){
-  if(pc && pc.connectionState === 'connected' && s === 'waiting') return; // Don't downgrade status if live
+  if(pc && pc.connectionState === 'connected' && s === 'waiting') return; 
   const dot=document.getElementById('statusDot'), txt=document.getElementById('statusText');
   console.log('[DEBUG] UI Status Change:', s);
   if(s==='live'){ dot.className='status-dot live'; txt.textContent='Live'; }
@@ -277,10 +263,9 @@ socket.on('connect',()=>{
   }
   setStatus('waiting'); 
 });
-socket.on('host-online',()=>{ /* host is online */ });
+socket.on('host-online',()=>{ });
 socket.on('host-offline',()=>{
   console.log('[DEBUG] Event: host-offline received. Entering grace period...');
-  // Wait 4 seconds to see if host comes back before killing connection
   setTimeout(() => {
     if (pc && pc.connectionState !== 'connected') {
        resetViewerState('Host offline timeout');
@@ -291,7 +276,6 @@ socket.on('stop-sharing',()=>{
   resetViewerState('Host stopped sharing');
 });
 socket.on('session-start', (timestamp)=>{
-  // Only start/reset if there's a significant drift or it's not running
   if (!meetingStartTime || Math.abs(meetingStartTime - timestamp) > 2000) {
     meetingStartTime = timestamp;
     startMeetingTimer();
@@ -300,10 +284,8 @@ socket.on('session-start', (timestamp)=>{
 
 function resetViewerState(reason='Meeting terminated'){
   console.log('[DEBUG] Action: resetViewerState called. Reason:', reason);
-  isAttaching = false; // Reset the lock
-  // Only reset if we aren't in the middle of a connecting handshake
+  isAttaching = false; 
   if (pc && (pc.connectionState === 'connecting' || pc.connectionState === 'connected') && reason === 'Meeting terminated') {
-     console.log('[DEBUG] Protection: Skipping reset because connection is active/pending');
      return;
   }
 
@@ -316,7 +298,6 @@ function resetViewerState(reason='Meeting terminated'){
   document.getElementById('tapToStart').classList.remove('visible');
   
   if(pc){ 
-    console.log('[DEBUG] Action: Closing PeerConnection');
     pc.close(); pc=null; 
     document.getElementById('diagPeer').textContent = 'Closed';
     document.getElementById('diagIce').textContent = 'Closed';
@@ -348,15 +329,9 @@ function createPeerConnection(){
   if(pc) return;
   pc=new RTCPeerConnection(ICE_CONFIG);
   pc.ontrack=(e)=>{
-    console.log('[DEBUG] Event: pc.ontrack fired', e.track.kind);
     if(e.track.kind==='video'){
-      if (isAttaching && video.srcObject) {
-         console.log('[DEBUG] Skipping redundant video attachment');
-         return;
-      }
+      if (isAttaching && video.srcObject) return;
       isAttaching = true;
-      console.log('[DEBUG] Action: Attaching video stream with MediaStream re-bundling');
-      
       const newStream = new MediaStream([e.track]);
       video.srcObject = newStream;
       video.style.display='block'; canvas.style.display='block'; idleState.style.display='none';
@@ -365,15 +340,9 @@ function createPeerConnection(){
       const attemptPlay = () => {
         if (!video.srcObject) return;
         video.play().then(() => {
-          console.log('[DEBUG] Success: Video playing');
           document.getElementById('tapToStart').classList.remove('visible');
         }).catch(err => {
-          if (err.name === 'AbortError') {
-             console.log('[DEBUG] Play aborted by browser - this is normal, will retry.');
-          } else {
-             console.warn('[DEBUG] Autoplay blocked, showing Tap overlay');
-             document.getElementById('tapToStart').classList.add('visible');
-          }
+          if (err.name !== 'AbortError') document.getElementById('tapToStart').classList.add('visible');
         });
       };
       
@@ -383,20 +352,11 @@ function createPeerConnection(){
       watchdogInterval = setInterval(() => {
         if (!pc || pc.connectionState === 'closed') { clearInterval(watchdogInterval); return; }
         if (video.srcObject && (video.paused || video.currentTime === 0)) {
-           console.log('[WATCHDOG] Video appears stuck (Time: 0), attempting nudge...');
            attemptPlay();
-           if (video.currentTime === 0) {
-             document.getElementById('tapToStart').classList.add('visible');
-           }
         } else if (video.currentTime > 0) {
            document.getElementById('tapToStart').classList.remove('visible');
         }
-      }, 5000); // 5s watchdog is safer for high latency
-
-    } else if(e.track.kind==='audio'){
-      console.log('[DEBUG] Action: Attaching audio stream');
-      document.getElementById('remoteAudio').srcObject=e.streams[0];
-      setupVisualizer(e.streams[0], true);
+      }, 5000); 
     }
   };
   pc.onicegatheringstatechange=()=>{
