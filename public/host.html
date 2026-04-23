@@ -411,6 +411,16 @@ function createPeerConnection(vid){
   const pc = new RTCPeerConnection({...ICE_CONFIG, sdpSemantics: 'unified-plan'});
   pcs[vid] = pc;
 
+  // 🔥 Set listener BEFORE adding tracks
+  pc.onnegotiationneeded = async () => {
+    try {
+      console.log(`[WEBRTC] Renegotiation needed for ${vid}`);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('offer', { roomId, target: vid, offer });
+    } catch (e) { console.error('Negotiation failed', e); }
+  };
+
   if(localStream) {
     localStream.getTracks().forEach(t => {
       const sender = pc.addTrack(t, localStream);
@@ -427,21 +437,16 @@ function createPeerConnection(vid){
         }, 1000);
       }
     });
+    
+    // 🔥 Force a pulse to ensure the offer is sent
+    setTimeout(() => {
+      if(pc.signalingState === 'stable') pc.onnegotiationneeded();
+    }, 100);
   }
-
-  pc.onnegotiationneeded = async () => {
-    try {
-      console.log(`[WEBRTC] Renegotiation needed for ${vid}`);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit('offer', { roomId, target: vid, offer });
-    } catch (e) { console.error('Negotiation failed', e); }
-  };
 
   pc.onicecandidate=({candidate})=>{
     if(candidate) socket.emit('ice-candidate', { roomId, target: vid, candidate }); 
   };
-
 }
 
 async function initiateOffer(vid, options = {}){
@@ -453,8 +458,6 @@ async function initiateOffer(vid, options = {}){
     socket.emit('offer', { roomId, target: vid, offer }); 
   } catch (e) { console.error('Offer failed', e); }
 }
-
-
 
 // NUCLEAR: Auto-repair pulse every 15 seconds for all viewers
 setInterval(() => {
@@ -468,6 +471,7 @@ setInterval(() => {
     });
   }
 }, 15000);
+
 
 
 
