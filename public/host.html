@@ -222,8 +222,8 @@ let frameCount = 0, lastFpsTime = performance.now();
 })();
 
 // ─── ICE Config ───────────────────────────────────────
-const ICE_CONFIG = { 
-  iceServers:[
+const ICE_CONFIG = {
+  iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
@@ -233,7 +233,7 @@ const ICE_CONFIG = {
     { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
   ],
-  iceCandidatePoolSize: 2
+  iceCandidatePoolSize: 10
 };
 
 const socket = io({transports:['websocket']});
